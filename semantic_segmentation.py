@@ -29,6 +29,8 @@ from qgis.PyQt.QtWidgets import QAction
 from .resources import *
 # Import the code for the dialog
 from .semantic_segmentation_dialog import SemanticSegmentationDialog
+from .install_env import setup_flair_environment
+
 import os.path
 
 
@@ -179,6 +181,16 @@ class SemanticSegmentation:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def run_installation(self):
+            """Launches the installation of the environment"""
+
+            python_path = setup_flair_environment(self.plugin_dir)
+
+            self.iface.messageBar().pushMessage(
+                "Success", 
+                "The FLAIR environment is ready!", 
+                level=0, duration=5
+            ) 
 
     def run(self):
         """Run method that performs all the real work"""
@@ -188,6 +200,7 @@ class SemanticSegmentation:
         if self.first_start == True:
             self.first_start = False
             self.dlg = SemanticSegmentationDialog()
+            self.dlg.pushButton_2.clicked.connect(self.run_installation)
 
         # show the dialog
         self.dlg.show()
