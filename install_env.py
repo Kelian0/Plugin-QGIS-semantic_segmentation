@@ -7,7 +7,7 @@ def setup_flair_environment(plugin_dir):
     """
     Create a virtual env and install python dependencies 
     """
-    env_dir = os.path.join(plugin_dir, "flair_env")
+    env_dir = os.path.join(os.path.realpath(plugin_dir), "flair_env")
     
     # path to python
     if os.name == 'nt':  # Windows
@@ -47,3 +47,7 @@ def setup_flair_environment(plugin_dir):
 
     print("Successful Installation")
     return python_exe
+
+if __name__ == "__main__":
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    setup_flair_environment(current_dir)

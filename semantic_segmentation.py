@@ -32,6 +32,9 @@ from .semantic_segmentation_dialog import SemanticSegmentationDialog
 from .install_env import setup_flair_environment
 
 import os.path
+import os
+import yaml
+from qgis.core import QgsProject
 
 
 class SemanticSegmentation:
@@ -208,6 +211,65 @@ class SemanticSegmentation:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
+            print("--- LE BOUTON OK A ÉTÉ CLIQUÉ ---")
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
-            pass
+            layer_name = self.dlg.comboBox.currentText()
+            
+            # On cherche la vraie couche géographique dans QGIS grâce à son nom
+            layers = QgsProject.instance().mapLayersByName(layer_name)
+            if not layers:
+                self.iface.messageBar().pushMessage("Erreur", "Couche introuvable", level=2)
+                return
+            
+            # On extrait le chemin absolu du fichier sur le disque dur (.tif)
+            input_img_path = layers[0].source()
+
+            # 2. Récupérer le chemin de sortie
+            output_full_path = self.dlg.lineEdit.text()
+            if not output_full_path:
+                self.iface.messageBar().pushMessage("Erreur", "Veuillez choisir un chemin de sortie", level=2)
+                return
+                
+            output_path = os.path.dirname(output_full_path) + "/"
+            output_name = os.path.basename(output_full_path)
+
+            # 3. Chemin vers le modèle (On suppose qu'il est dans le dossier vendor)
+            model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
+
+            # 4. Construction du dictionnaire de configuration (format attendu par FLAIR)
+            config = {
+                "output_path": output_path,
+                "output_name": output_name,
+                "input_img_path": input_img_path,
+                "channels": [1, 2, 3, 4], # On suppose RVB + Infrarouge
+                "img_pixels_detection": 512,
+                "margin": 128,
+                "output_type": "argmax",
+                "n_classes": 19, # On garde 19 par défaut pour la V1
+                "model_weights": model_path,
+                "model_framework": {
+                    "model_provider": "SegmentationModelsPytorch",
+                    "SegmentationModelsPytorch": {
+                        "encoder_decoder": "resnet34_unet"
+                    }
+                },
+                "batch_size": 4, # Mettre 2 si l'ordinateur a peu de RAM
+                "use_gpu": False, # On force le CPU pour le moment pour éviter les crashs CUDA
+                "num_worker": 0,
+                "write_dataframe": False,
+                "norma_task": [
+                    {
+                        "norm_type": "custom",
+                        "norm_means": [105.08, 110.87, 101.82, 106.38],
+                        "norm_stds": [52.17, 45.38, 44.00, 39.69]
+                    }
+                ]
+            }
+
+            # 5. Écriture du fichier temporaire
+            temp_yaml_path = os.path.join(self.plugin_dir, "temp_config.yaml")
+            with open(temp_yaml_path, 'w') as outfile:
+                yaml.dump(config, outfile, default_flow_style=False)
+            
+            self.iface.messageBar().pushMessage("Succès", f"Fichier de configuration créé : {temp_yaml_path}", level=0)
