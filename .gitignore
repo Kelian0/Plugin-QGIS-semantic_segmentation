@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,archive,qt,qtcreator
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,archive,qt,qtcreator
 
+*.tif
+*.tiff
+
 ### Archive ###
 flair_env/*
 temp_config.yaml
