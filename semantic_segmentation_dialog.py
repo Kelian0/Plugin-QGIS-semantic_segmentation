@@ -49,3 +49,13 @@ class SemanticSegmentationDialog(QtWidgets.QDialog, FORM_CLASS):
         for layer in QgsProject.instance().mapLayers().values():
             if isinstance(layer, QgsRasterLayer):
                 self.comboBox.addItem(layer.name())
+
+
+FORM_CLASS_INSTALL, _ = uic.loadUiType(os.path.join(
+    os.path.dirname(__file__), 'install_dialog.ui'))
+
+class InstallDialog(QtWidgets.QDialog, FORM_CLASS_INSTALL):
+    def __init__(self, parent=None):
+        """Constructor."""
+        super(InstallDialog, self).__init__(parent)
+        self.setupUi(self)
