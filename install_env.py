@@ -1,51 +1,38 @@
 import os
 import subprocess
-import venv
-import sys
+import shutil
 
 def setup_flair_environment(plugin_dir):
-    """
-    Create a virtual env and install python dependencies 
-    """
-    env_dir = os.path.join(os.path.realpath(plugin_dir), "flair_env")
-    
-    # path to python
-    if os.name == 'nt':  # Windows
-        python_exe = os.path.join(env_dir, "Scripts", "python.exe")
-    else:                # Mac / Linux
-        python_exe = os.path.join(env_dir, "bin", "python")
+    plugin_dir = os.path.realpath(plugin_dir)
+    env_dir = os.path.join(plugin_dir, "flair_env")
+    flair_repo_dir = os.path.join(plugin_dir, "vendor", "FLAIR-1")
 
-    # creating the env if it doesn't exist already
-    if not os.path.exists(env_dir):
-        print("Creating env...")
-        venv.create(env_dir, with_pip=True)
-    else:
-        print("The env already exists")
+    if os.path.exists(env_dir):
+        shutil.rmtree(env_dir, ignore_errors=True)
 
-    # updating pip
-    subprocess.run([python_exe, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+    print("Creating Conda environment...")
+    subprocess.run(
+        ["conda", "create", "-y", "-p", env_dir, "-c", "conda-forge", "python=3.11"], 
+        check=True
+    )
 
-    # list of dependencies
-    dependencies = [
-        "rasterio",
-        "pyyaml",
-        "tqdm",
-        "segmentation-models-pytorch",
-        "pytorch-lightning"
-    ]
+    python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python")
 
-    # Installation of PyTorch (CPU version by default)
+    print("Installing FLAIR dependencies and downgraded setuptools...")
+    subprocess.run(
+        [python_exe, "-m", "pip", "install", "setuptools<70.0.0", "-e", "."], 
+        cwd=flair_repo_dir, 
+        check=True
+    )
+
+    print("Installing CPU version of PyTorch...")
     subprocess.run([
         python_exe, "-m", "pip", "install", 
-        "torch", "torchvision", 
-        "--index-url", "https://download.pytorch.org/whl/cpu"
+        "torch>=2.0.0", "torchvision", 
+        "--extra-index-url", "https://download.pytorch.org/whl/cpu"
     ], check=True)
 
-    # Installation of the other dependencies
-    print("Installation of other dependencies...")
-    subprocess.run([python_exe, "-m", "pip", "install"] + dependencies, check=True)
-
-    print("Successful Installation")
+    print("Environment setup completed successfully.")
     return python_exe
 
 if __name__ == "__main__":
