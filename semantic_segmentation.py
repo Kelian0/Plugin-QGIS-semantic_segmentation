@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QAction
 
 # Initialize Qt resources from file resources.py
@@ -32,9 +32,10 @@ from .semantic_segmentation_dialog import SemanticSegmentationDialog
 from .install_env import setup_flair_environment
 
 import os.path
+import subprocess
 import os
 import yaml
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsTask, QgsApplication, QgsMessageLog, Qgis, QgsPalettedRasterRenderer
 
 
 class SemanticSegmentation:
@@ -184,92 +185,171 @@ class SemanticSegmentation:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def run_installation(self):
-            """Launches the installation of the environment"""
-
-            python_path = setup_flair_environment(self.plugin_dir)
-
-            self.iface.messageBar().pushMessage(
-                "Success", 
-                "The FLAIR environment is ready!", 
-                level=0, duration=5
-            ) 
 
     def run(self):
-        """Run method that performs all the real work"""
+            if self.first_start:
+                self.first_start = False
+                self.dlg = SemanticSegmentationDialog()
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
-            self.first_start = False
-            self.dlg = SemanticSegmentationDialog()
-            self.dlg.pushButton_2.clicked.connect(self.run_installation)
+            self.dlg.show()
+            if not self.dlg.exec_():
+                return
 
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            print("--- LE BOUTON OK A ÉTÉ CLIQUÉ ---")
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
             layer_name = self.dlg.comboBox.currentText()
-            
-            # On cherche la vraie couche géographique dans QGIS grâce à son nom
             layers = QgsProject.instance().mapLayersByName(layer_name)
             if not layers:
-                self.iface.messageBar().pushMessage("Erreur", "Couche introuvable", level=2)
+                self.iface.messageBar().pushMessage("Error", "Selected layer not found", level=2)
                 return
-            
-            # On extrait le chemin absolu du fichier sur le disque dur (.tif)
+                
             input_img_path = layers[0].source()
 
-            # 2. Récupérer le chemin de sortie
             output_full_path = self.dlg.lineEdit.text()
             if not output_full_path:
-                self.iface.messageBar().pushMessage("Erreur", "Veuillez choisir un chemin de sortie", level=2)
+                self.iface.messageBar().pushMessage("Error", "No output path specified", level=2)
                 return
                 
             output_path = os.path.dirname(output_full_path) + "/"
             output_name = os.path.basename(output_full_path)
-
-            # 3. Chemin vers le modèle (On suppose qu'il est dans le dossier vendor)
             model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
 
-            # 4. Construction du dictionnaire de configuration (format attendu par FLAIR)
             config = {
                 "output_path": output_path,
                 "output_name": output_name,
                 "input_img_path": input_img_path,
-                "channels": [1, 2, 3, 4], # On suppose RVB + Infrarouge
+                "channels": [1, 2, 3, 4],
                 "img_pixels_detection": 512,
                 "margin": 128,
                 "output_type": "argmax",
-                "n_classes": 19, # On garde 19 par défaut pour la V1
+                "n_classes": 19,
                 "model_weights": model_path,
                 "model_framework": {
                     "model_provider": "SegmentationModelsPytorch",
-                    "SegmentationModelsPytorch": {
-                        "encoder_decoder": "resnet34_unet"
-                    }
+                    "SegmentationModelsPytorch": {"encoder_decoder": "resnet34_unet"}
                 },
-                "batch_size": 4, # Mettre 2 si l'ordinateur a peu de RAM
-                "use_gpu": False, # On force le CPU pour le moment pour éviter les crashs CUDA
+                "batch_size": 4, 
+                "use_gpu": False, 
                 "num_worker": 0,
                 "write_dataframe": False,
-                "norma_task": [
-                    {
-                        "norm_type": "custom",
-                        "norm_means": [105.08, 110.87, 101.82, 106.38],
-                        "norm_stds": [52.17, 45.38, 44.00, 39.69]
-                    }
-                ]
+                "norma_task": [{
+                    "norm_type": "custom",
+                    "norm_means": [105.08, 110.87, 101.82, 106.38],
+                    "norm_stds": [52.17, 45.38, 44.00, 39.69]
+                }]
             }
 
-            # 5. Écriture du fichier temporaire
             temp_yaml_path = os.path.join(self.plugin_dir, "temp_config.yaml")
             with open(temp_yaml_path, 'w') as outfile:
                 yaml.dump(config, outfile, default_flow_style=False)
+
+            self.iface.messageBar().pushMessage("Success", f"Config saved: {temp_yaml_path}", level=0)
+
+            env_dir = os.path.join(self.plugin_dir, "flair_env")
+            python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3")
+            script_path = os.path.join(self.plugin_dir, "vendor",'FLAIR-1', "src", "zone_detect", "main.py")
             
-            self.iface.messageBar().pushMessage("Succès", f"Fichier de configuration créé : {temp_yaml_path}", level=0)
+            if not os.path.exists(python_exe) or not os.path.exists(script_path):
+                self.iface.messageBar().pushMessage("Error", "Python env or FLAIR script missing", level=2)
+                return
+
+            clr_file_path = os.path.join(self.plugin_dir, "color.clr")
+            self.task = FlairInferenceTask(
+                description="FLAIR Segmentation...",
+                python_exe=python_exe,
+                script_path=script_path,
+                yaml_path=temp_yaml_path,
+                output_tif=os.path.join(output_path, output_name),
+                clr_path=clr_file_path,
+                iface=self.iface
+            )
+            QgsApplication.taskManager().addTask(self.task)
+            self.iface.messageBar().pushMessage("Info", "Analysis started in background", level=0)
+
+
+class FlairInferenceTask(QgsTask):
+    """Background task for FLAIR inference to keep QGIS responsive"""
+    
+    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface):
+        super().__init__(description, QgsTask.CanCancel)
+        self.python_exe = python_exe
+        self.script_path = script_path
+        self.yaml_path = yaml_path
+        self.output_tif = output_tif
+        self.iface = iface
+        self.process = None
+        self.clr_path = clr_path
+
+    def run(self):
+        try:
+            clean_env = os.environ.copy()
+            
+            if 'LD_LIBRARY_PATH' in clean_env:
+                del clean_env['LD_LIBRARY_PATH']
+            if 'PYTHONPATH' in clean_env:
+                del clean_env['PYTHONPATH']
+            if 'PYTHONHOME' in clean_env:
+                del clean_env['PYTHONHOME']
+
+            flair_root = os.path.dirname(os.path.dirname(os.path.dirname(self.script_path)))
+
+            self.process = subprocess.Popen(
+                [self.python_exe, "-m", "src.zone_detect.main", f"--conf={self.yaml_path}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                cwd=flair_root,
+                env=clean_env
+            )
+
+            for line in self.process.stdout:
+                if self.isCanceled():
+                    self.process.terminate()
+                    return False
+                QgsMessageLog.logMessage(line.strip(), "FLAIR", Qgis.Info)
+
+            self.process.wait()
+            
+            if self.process.returncode == 0:
+                return True
+            else:
+                return False
+        except Exception as error_msg:
+            QgsMessageLog.logMessage(str(error_msg), "FLAIR", Qgis.Critical)
+            return False
+    
+    def finished(self, result):
+        QgsMessageLog.logMessage("Finished method started", "FLAIR", Qgis.Info)
+        
+        if result == True:
+            layer_name = os.path.basename(self.output_tif)
+            layer = self.iface.addRasterLayer(self.output_tif, layer_name)
+            
+            if layer != None:
+                if os.path.exists(self.clr_path):
+                    self.apply_color_palette(layer)
+                    
+            self.iface.messageBar().pushMessage("Success", "Inference complete", level=Qgis.Success)
+            
+        if result == False:
+            self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
+
+    def apply_color_palette(self, layer):
+        palette_classes = []
+        
+        with open(self.clr_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split()
+                if len(parts) >= 4:
+                    pixel_value = int(parts[0])
+                    red = int(parts[1])
+                    green = int(parts[2])
+                    blue = int(parts[3])
+                    
+                    color = QColor(red, green, blue)
+                    palette_class = QgsPalettedRasterRenderer.Class(pixel_value, color, str(pixel_value))
+                    palette_classes.append(palette_class)
+        
+        provider = layer.dataProvider()
+        renderer = QgsPalettedRasterRenderer(provider, 1, palette_classes)
+        layer.setRenderer(renderer)
+        layer.triggerRepaint()
+        self.iface.layerTreeView().refreshLayerSymbology(layer.id())
