@@ -2,17 +2,37 @@ import os
 import subprocess
 import shutil
 
+def find_conda_executable():
+    conda_exe = shutil.which("conda")
+    if conda_exe:
+        return conda_exe
+        
+    common_paths = [
+        os.path.expanduser("~/miniconda3/bin/conda"),
+        os.path.expanduser("~/miniconda3/condabin/conda"),
+        os.path.expanduser("~/anaconda3/bin/conda"),
+        os.path.expanduser("~/anaconda3/condabin/conda"),
+        "/opt/conda/bin/conda"
+    ]
+    
+    for path in common_paths:
+        if os.path.exists(path):
+            return path
+            
+    raise FileNotFoundError("Conda executable not found. Please ensure Miniconda/Anaconda is installed.")
+
 def setup_flair_environment(plugin_dir):
     plugin_dir = os.path.realpath(plugin_dir)
     env_dir = os.path.join(plugin_dir, "flair_env")
     flair_repo_dir = os.path.join(plugin_dir, "vendor", "FLAIR-1")
+    conda_exe = find_conda_executable()
 
     if os.path.exists(env_dir):
         shutil.rmtree(env_dir, ignore_errors=True)
 
     print("Creating Conda environment...")
     subprocess.run(
-        ["conda", "create", "-y", "-p", env_dir, "-c", "conda-forge", "python=3.11"], 
+        [conda_exe, "create", "-y", "-p", env_dir, "-c", "conda-forge", "python=3.11"], 
         check=True
     )
 

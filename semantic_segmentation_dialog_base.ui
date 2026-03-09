@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>611</width>
-    <height>377</height>
+    <width>740</width>
+    <height>793</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
     <rect>
-     <x>420</x>
-     <y>330</y>
+     <x>450</x>
+     <y>640</y>
      <width>168</width>
      <height>27</height>
     </rect>
@@ -29,138 +29,21 @@
     <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_6">
-   <property name="geometry">
-    <rect>
-     <x>169</x>
-     <y>160</y>
-     <width>85</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Vineyard</string>
-   </property>
-  </widget>
   <widget class="QComboBox" name="comboBox">
    <property name="geometry">
     <rect>
-     <x>152</x>
-     <y>9</y>
-     <width>86</width>
+     <x>183</x>
+     <y>170</y>
+     <width>431</width>
      <height>27</height>
     </rect>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>67</y>
-     <width>81</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Building</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_8">
-   <property name="geometry">
-    <rect>
-     <x>169</x>
-     <y>191</y>
-     <width>105</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Herbaceous</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_7">
-   <property name="geometry">
-    <rect>
-     <x>169</x>
-     <y>67</y>
-     <width>99</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Coniferous</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_12">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>98</y>
-     <width>112</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Plowed Land</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_11">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>160</y>
-     <width>62</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Snow</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_10">
-   <property name="geometry">
-    <rect>
-     <x>169</x>
-     <y>98</y>
-     <width>88</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Decidous</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_9">
-   <property name="geometry">
-    <rect>
-     <x>169</x>
-     <y>129</y>
-     <width>102</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Brushwood</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_4">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>160</y>
-     <width>84</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Bare Soil</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
    <property name="geometry">
     <rect>
-     <x>9</x>
-     <y>222</y>
+     <x>39</x>
+     <y>532</y>
      <width>84</width>
      <height>19</height>
     </rect>
@@ -169,24 +52,11 @@
     <string>Output Path</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_13">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>129</y>
-     <width>129</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Swimming Pool</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>9</x>
-     <y>9</y>
+     <x>40</x>
+     <y>170</y>
      <width>81</width>
      <height>19</height>
     </rect>
@@ -195,25 +65,12 @@
     <string>Select input</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_5">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>191</y>
-     <width>67</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Water</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="pushButton">
    <property name="geometry">
     <rect>
-     <x>513</x>
-     <y>222</y>
-     <width>80</width>
+     <x>592</x>
+     <y>532</y>
+     <width>31</width>
      <height>27</height>
     </rect>
    </property>
@@ -221,38 +78,12 @@
     <string>...</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="checkBox_14">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>67</y>
-     <width>140</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Argicultural Land</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_15">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>191</y>
-     <width>107</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Greenhouse</string>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="lineEdit">
    <property name="geometry">
     <rect>
-     <x>125</x>
-     <y>222</y>
-     <width>142</width>
+     <x>155</x>
+     <y>532</y>
+     <width>421</width>
      <height>27</height>
     </rect>
    </property>
@@ -260,50 +91,11 @@
     <string>/home/kelian/MasterDataScience/ResearchProject/LearningQGIS_scripting/semantic_segmentation/output.tif</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label_2">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>42</y>
-     <width>110</width>
-     <height>19</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Choose Classes :</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_2">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>98</y>
-     <width>137</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Pervious Surface</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_3">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>129</y>
-     <width>154</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Impervious Surface</string>
-   </property>
-  </widget>
   <widget class="QProgressBar" name="progressBar">
    <property name="geometry">
     <rect>
-     <x>60</x>
-     <y>270</y>
+     <x>90</x>
+     <y>580</y>
      <width>451</width>
      <height>23</height>
     </rect>
@@ -311,6 +103,245 @@
    <property name="value">
     <number>24</number>
    </property>
+  </widget>
+  <widget class="QTabWidget" name="tabWidget">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>260</y>
+     <width>511</width>
+     <height>231</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="QWidget" name="tab">
+    <attribute name="title">
+     <string>Tab 1</string>
+    </attribute>
+    <widget class="QCheckBox" name="checkBox_15">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>160</y>
+       <width>107</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Greenhouse</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_4">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>129</y>
+       <width>84</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Bare Soil</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_3">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>98</y>
+       <width>154</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Impervious Surface</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_7">
+     <property name="geometry">
+      <rect>
+       <x>169</x>
+       <y>36</y>
+       <width>99</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Coniferous</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_10">
+     <property name="geometry">
+      <rect>
+       <x>169</x>
+       <y>67</y>
+       <width>88</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Decidous</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_8">
+     <property name="geometry">
+      <rect>
+       <x>169</x>
+       <y>160</y>
+       <width>105</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Herbaceous</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_11">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>129</y>
+       <width>62</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Snow</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_5">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>160</y>
+       <width>67</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Water</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>36</y>
+       <width>81</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TEST&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Building</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_2">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>11</y>
+       <width>110</width>
+       <height>19</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Choose Classes :</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_13">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>98</y>
+       <width>129</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Swimming Pool</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_14">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>36</y>
+       <width>140</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Argicultural Land</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_9">
+     <property name="geometry">
+      <rect>
+       <x>169</x>
+       <y>98</y>
+       <width>102</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Brushwood</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_12">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>67</y>
+       <width>112</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Plowed Land</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_6">
+     <property name="geometry">
+      <rect>
+       <x>169</x>
+       <y>129</y>
+       <width>85</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Vineyard</string>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_2">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>67</y>
+       <width>137</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Pervious Surface</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_2">
+    <attribute name="title">
+     <string>Tab 2</string>
+    </attribute>
+   </widget>
+   <widget class="QWidget" name="tab_3">
+    <attribute name="title">
+     <string>Page</string>
+    </attribute>
+   </widget>
   </widget>
  </widget>
  <resources/>

@@ -28,10 +28,9 @@ from qgis.PyQt.QtWidgets import QAction
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .semantic_segmentation_dialog import SemanticSegmentationDialog
+from .semantic_segmentation_dialog import SemanticSegmentationDialog,InstallDialog
 from .install_env import setup_flair_environment
 
-import os.path
 import subprocess
 import os
 import yaml
@@ -184,85 +183,124 @@ class SemanticSegmentation:
                 self.tr(u'&Semantic Segmentation'),
                 action)
             self.iface.removeToolBarIcon(action)
+    
+    def check_env(self):
+        """Check if the virtual environment for flair is installed"""
+        env_dir = os.path.join(self.plugin_dir,"flair_env")
+
+        if os.name == 'nt':                                         #for windows
+            python_exe = os.path.join(env_dir, "python.exe")
+        else:                                                       #for mac linux
+            python_exe = os.path.join(env_dir, "bin", "python")
+            
+        if os.path.exists(python_exe):
+            return True
+        else:
+            return False
+        
+    def show_installation_dialog(self):
+        self.install_dlg = InstallDialog()
+        
+        self.install_dlg.progress_bar.setRange(0, 0)
+        self.install_dlg.progress_bar.setVisible(False)
+        self.install_dlg.install_button.clicked.connect(self.start_installation_task)
+        
+        result = self.install_dlg.exec_()
+        
+        if result == 1:
+            self.iface.messageBar().pushMessage("Success", "Environment ready. You can now use the plugin.", level=0)
+        else:
+            self.iface.messageBar().pushMessage("Error", "Installation failed. Check QGIS messages log.", level=2)
+
+    def start_installation_task(self):
+        self.install_dlg.install_button.setEnabled(False)
+        self.install_dlg.progress_bar.setVisible(True)
+        
+        self.install_task = InstallEnv("Installing Conda Env...", self.plugin_dir, self.install_dlg)
+        QgsApplication.taskManager().addTask(self.install_task)
 
 
     def run(self):
-            if self.first_start:
-                self.first_start = False
-                self.dlg = SemanticSegmentationDialog()
+        if not self.check_env():
+            is_installed = self.show_installation_dialog()
+            if not is_installed:
+                return 
 
-            self.dlg.show()
-            if not self.dlg.exec_():
-                return
+        if self.first_start:
+            self.first_start = False
+            self.dlg = SemanticSegmentationDialog()
 
-            layer_name = self.dlg.comboBox.currentText()
-            layers = QgsProject.instance().mapLayersByName(layer_name)
-            if not layers:
-                self.iface.messageBar().pushMessage("Error", "Selected layer not found", level=2)
-                return
-                
-            input_img_path = layers[0].source()
-
-            output_full_path = self.dlg.lineEdit.text()
-            if not output_full_path:
-                self.iface.messageBar().pushMessage("Error", "No output path specified", level=2)
-                return
-                
-            output_path = os.path.dirname(output_full_path) + "/"
-            output_name = os.path.basename(output_full_path)
-            model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
-
-            config = {
-                "output_path": output_path,
-                "output_name": output_name,
-                "input_img_path": input_img_path,
-                "channels": [1, 2, 3, 4],
-                "img_pixels_detection": 512,
-                "margin": 128,
-                "output_type": "argmax",
-                "n_classes": 19,
-                "model_weights": model_path,
-                "model_framework": {
-                    "model_provider": "SegmentationModelsPytorch",
-                    "SegmentationModelsPytorch": {"encoder_decoder": "resnet34_unet"}
-                },
-                "batch_size": 4, 
-                "use_gpu": False, 
-                "num_worker": 0,
-                "write_dataframe": False,
-                "norma_task": [{
-                    "norm_type": "custom",
-                    "norm_means": [105.08, 110.87, 101.82, 106.38],
-                    "norm_stds": [52.17, 45.38, 44.00, 39.69]
-                }]
-            }
-
-            temp_yaml_path = os.path.join(self.plugin_dir, "temp_config.yaml")
-            with open(temp_yaml_path, 'w') as outfile:
-                yaml.dump(config, outfile, default_flow_style=False)
-
-            self.iface.messageBar().pushMessage("Success", f"Config saved: {temp_yaml_path}", level=0)
-
-            env_dir = os.path.join(self.plugin_dir, "flair_env")
-            python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3")
-            script_path = os.path.join(self.plugin_dir, "vendor",'FLAIR-1', "src", "zone_detect", "main.py")
+        if not self.dlg.exec_():
+            return
+        
+        layer_name = self.dlg.comboBox.currentText()
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if not layers:
+            self.iface.messageBar().pushMessage("Error", "Selected layer not found", level=2)
+            return
             
-            if not os.path.exists(python_exe) or not os.path.exists(script_path):
-                self.iface.messageBar().pushMessage("Error", "Python env or FLAIR script missing", level=2)
-                return
+        input_img_path = layers[0].source()
 
-            clr_file_path = os.path.join(self.plugin_dir, "color.clr")
-            self.task = FlairInferenceTask(
-                description="FLAIR Segmentation...",
-                python_exe=python_exe,
-                script_path=script_path,
-                yaml_path=temp_yaml_path,
-                output_tif=os.path.join(output_path, output_name),
-                clr_path=clr_file_path,
-                iface=self.iface
-            )
-            QgsApplication.taskManager().addTask(self.task)
-            self.iface.messageBar().pushMessage("Info", "Analysis started in background", level=0)
+        output_full_path = self.dlg.lineEdit.text()
+        if not output_full_path:
+            self.iface.messageBar().pushMessage("Error", "No output path specified", level=2)
+            return
+            
+        output_path = os.path.dirname(output_full_path) + "/"
+        output_name = os.path.basename(output_full_path)
+        model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
+
+        config = {
+            "output_path": output_path,
+            "output_name": output_name,
+            "input_img_path": input_img_path,
+            "channels": [1, 2, 3, 4],
+            "img_pixels_detection": 512,
+            "margin": 128,
+            "output_type": "argmax",
+            "n_classes": 19,
+            "model_weights": model_path,
+            "model_framework": {
+                "model_provider": "SegmentationModelsPytorch",
+                "SegmentationModelsPytorch": {"encoder_decoder": "resnet34_unet"}
+            },
+            "batch_size": 4, 
+            "use_gpu": False, 
+            "num_worker": 0,
+            "write_dataframe": False,
+            "norma_task": [{
+                "norm_type": "custom",
+                "norm_means": [105.08, 110.87, 101.82, 106.38],
+                "norm_stds": [52.17, 45.38, 44.00, 39.69]
+            }]
+        }
+
+        temp_yaml_path = os.path.join(self.plugin_dir, "temp_config.yaml")
+        with open(temp_yaml_path, 'w') as outfile:
+            yaml.dump(config, outfile, default_flow_style=False)
+
+        self.iface.messageBar().pushMessage("Success", f"Config saved: {temp_yaml_path}", level=0)
+
+        env_dir = os.path.join(self.plugin_dir, "flair_env")
+        python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3")
+        script_path = os.path.join(self.plugin_dir, "vendor",'FLAIR-1', "src", "zone_detect", "main.py")
+        
+        if not os.path.exists(python_exe) or not os.path.exists(script_path):
+            self.iface.messageBar().pushMessage("Error", "Python env or FLAIR script missing", level=2)
+            return
+
+        clr_file_path = os.path.join(self.plugin_dir, "color.clr")
+        self.task = FlairInferenceTask(
+            description="FLAIR Segmentation...",
+            python_exe=python_exe,
+            script_path=script_path,
+            yaml_path=temp_yaml_path,
+            output_tif=os.path.join(output_path, output_name),
+            clr_path=clr_file_path,
+            iface=self.iface
+        )
+        QgsApplication.taskManager().addTask(self.task)
+        self.iface.messageBar().pushMessage("Info", "Analysis started in background", level=0)
 
 
 class FlairInferenceTask(QgsTask):
@@ -353,3 +391,24 @@ class FlairInferenceTask(QgsTask):
         layer.setRenderer(renderer)
         layer.triggerRepaint()
         self.iface.layerTreeView().refreshLayerSymbology(layer.id())
+
+
+class InstallEnv(QgsTask):
+    def __init__(self, description, plugin_dir, dialog):
+        super().__init__(description, QgsTask.CanCancel)
+        self.plugin_dir = plugin_dir
+        self.dialog = dialog
+    
+    def run(self):
+        try:
+            setup_flair_environment(self.plugin_dir)
+            return True
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Install failed: {e}", "FLAIR", Qgis.Critical)
+            return False
+
+    def finished(self,result):
+        if result:
+            self.dialog.accept() 
+        else:
+            self.dialog.reject()
