@@ -1,18 +1,18 @@
 0 219 14 154 255 building
-1 147 142 123 255 pervious surface
-2 248 12 0 255 impervious surface
-3 169 113 1 255 bare soil
+1 147 142 123 255 pervious_surface
+2 248 12 0 255 impervious_surface
+3 169 113 1 255 bare_soil
 4 21 83 174 255 water
 5 25 74 38 255 coniferous
 6 70 228 131 255 deciduous
 7 243 166 13 255 brushwood
 8 102 0 130 255 vineyard
-9 85 255 0 255 herbaceous vegetation
-10 255 243 13 255 agricultural land
-11 228 223 124 255 plowed land'
-12 61 230 235 255 swimming pool
+9 85 255 0 255 herbaceous_vegetation
+10 255 243 13 255 agricultural_land
+11 228 223 124 255 plowed_land
+12 61 230 235 255 swimming_pool
 13 255 255 255 255 snow
-14 138 179 160 255 clear cut
+14 138 179 160 255 clear_cut
 15 107 113 79 255 mixed
 16 197 220 66 255 ligneous
 17 153 153 255 255 greenhouse
