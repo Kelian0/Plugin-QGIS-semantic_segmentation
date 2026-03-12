@@ -26,7 +26,7 @@ import os
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
-from qgis.core import QgsProject, QgsRasterLayer
+from qgis.core import QgsProject, QgsRasterLayer, QgsMapLayerProxyModel
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -46,9 +46,46 @@ class SemanticSegmentationDialog(QtWidgets.QDialog, FORM_CLASS):
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
-        for layer in QgsProject.instance().mapLayers().values():
-            if isinstance(layer, QgsRasterLayer):
-                self.comboBox.addItem(layer.name())
+        self.layer_combo_red.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.layer_combo_green.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.layer_combo_blue.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.layer_combo_nir.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.layer_combo_nir.setAllowEmptyLayer(True,"(Vide)")
+
+        initial_layer_red = self.layer_combo_red.currentLayer()
+        initial_layer_green = self.layer_combo_green.currentLayer()
+        initial_layer_blue = self.layer_combo_blue.currentLayer()
+        initial_layer_nir = None
+        if initial_layer_red is not None:
+            self.band_combo_red.setLayer(initial_layer_red)
+        if initial_layer_green is not None:
+            self.band_combo_green.setLayer(initial_layer_green)
+        if initial_layer_blue is not None:
+            self.band_combo_blue.setLayer(initial_layer_blue)
+        if initial_layer_nir is not None:
+            self.band_combo_nir.setLayer(initial_layer_nir)
+        
+        self.band_combo_nir.setShowNotSetOption(True,"(Vide)")
+        self.layer_combo_red.layerChanged.connect(self.update_band_red)
+        self.layer_combo_green.layerChanged.connect(self.update_band_green)
+        self.layer_combo_blue.layerChanged.connect(self.update_band_blue)
+        self.layer_combo_nir.layerChanged.connect(self.update_band_nir)
+
+    def update_band_red(self, layer):
+        if layer is not None:
+            self.band_combo_red.setLayer(layer)
+
+    def update_band_green(self, layer):
+        if layer is not None:
+            self.band_combo_green.setLayer(layer)
+
+    def update_band_blue(self, layer):
+        if layer is not None:
+            self.band_combo_blue.setLayer(layer)
+
+    def update_band_nir(self, layer):
+        if layer is not None:
+            self.band_combo_nir.setLayer(layer)
 
 
 FORM_CLASS_INSTALL, _ = uic.loadUiType(os.path.join(

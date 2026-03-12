@@ -21,9 +21,9 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -218,7 +218,41 @@ class SemanticSegmentation:
         
         self.install_task = InstallEnv("Installing Conda Env...", self.plugin_dir, self.install_dlg)
         QgsApplication.taskManager().addTask(self.install_task)
+    
+    def toggle_strikethrough(self, is_checked, checkbox):
+        font = checkbox.font()
+        
+        if is_checked:
+            font.setStrikeOut(True)
+        else:
+            font.setStrikeOut(False)
+            
+        checkbox.setFont(font)
+    
 
+    def add_global_class(self):
+        text, ok_pressed = QInputDialog.getText(self.dlg, "Nouveau Groupe", "Entrer un nom de groupe")
+        
+        if ok_pressed:
+            if text:
+                item = QTreeWidgetItem(self.dlg.treeWidget)
+                item.setText(0, text)
+                
+                # Allow dropping items inside this global class
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled | Qt.ItemIsEditable)
+                item.setExpanded(True)
+
+    def remove_selected_item(self):
+        root = self.dlg.treeWidget.invisibleRootItem()
+        selected_items = self.dlg.treeWidget.selectedItems()
+        
+        for item in selected_items:
+            parent = item.parent()
+            
+            if parent == None:
+                root.removeChild(item)
+            else:
+                parent.removeChild(item)
 
     def run(self):
         if not self.check_env():
@@ -230,15 +264,31 @@ class SemanticSegmentation:
             self.first_start = False
             self.dlg = SemanticSegmentationDialog()
 
+            self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
+            canvas_extent = self.iface.mapCanvas().extent()
+            canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+            self.dlg.extent_widget.setCurrentExtent(canvas_extent, canvas_crs)
+
+        check_boxes = self.dlg.class_selection_box.findChildren(QCheckBox)
+        for cb in check_boxes:
+            cb.toggled.connect(lambda checked, current_cb=cb: self.toggle_strikethrough(checked, current_cb))
+
+        # Connect the buttons to the functions
+        self.dlg.btn_add.clicked.connect(self.add_global_class)
+        self.dlg.btn_remove.clicked.connect(self.remove_selected_item)
+
+        
         if not self.dlg.exec_():
             return
         
+
         layer_name = self.dlg.comboBox.currentText()
         layers = QgsProject.instance().mapLayersByName(layer_name)
         if not layers:
             self.iface.messageBar().pushMessage("Error", "Selected layer not found", level=2)
             return
-            
+        
+
         input_img_path = layers[0].source()
 
         output_full_path = self.dlg.lineEdit.text()
