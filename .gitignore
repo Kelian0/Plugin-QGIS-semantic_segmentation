@@ -3,6 +3,7 @@
 
 *.tif
 *.tiff
+*.xml
 
 ### Archive ###
 flair_env/*
