@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox, QButtonGroup
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -33,10 +33,12 @@ from .install_env import setup_flair_environment
 
 import subprocess
 import processing
+import random
+import json
 import os
 import yaml
 from qgis.core import QgsProject, QgsTask, QgsApplication, QgsMessageLog, Qgis, QgsPalettedRasterRenderer
-
+from qgis.gui import QgsColorButton
 
 class SemanticSegmentation:
     """QGIS Plugin Implementation."""
@@ -254,10 +256,19 @@ class SemanticSegmentation:
                 
                 tableitem1 = QTableWidgetItem(text)
                 tableitem1.setData(Qt.UserRole, text)
-                tableitem2 = QTableWidgetItem("COLOR")
-                
                 self.dlg.tableWidget.setItem(row_index, 0, tableitem1)
-                self.dlg.tableWidget.setItem(row_index, 1, tableitem2)
+
+                color_button = QgsColorButton()
+                color_button.setAllowOpacity(False)
+                color_button.setColor(QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
+                                
+                color_button.colorChanged.connect(self.on_color_changed)
+
+                self.dlg.tableWidget.setCellWidget(row_index, 1, color_button)
+
+    def on_color_changed(self):
+        #TODO mise à jour du fichier de config des groupes
+        pass
 
     def remove_group(self):
         selected_items = self.dlg.treeWidget.selectedItems()
@@ -329,7 +340,10 @@ class SemanticSegmentation:
             
             if table_item != None:
                 if table_item.text() == old_text:
+                    self.dlg.tableWidget.blockSignals(True)
                     table_item.setText(new_text)
+                    table_item.setData(Qt.UserRole, new_text) 
+                    self.dlg.tableWidget.blockSignals(False)
                     
         item.setData(0, Qt.UserRole, new_text)
 
@@ -569,7 +583,7 @@ class SemanticSegmentation:
             lambda checked, other=self.dlg.ClassSelection: self.toggle_exclusive_groupboxes(checked, other))
 
         # Connect the buttons to the functions
-        self.dlg.btn_add.clicked.connect(self.add_group)
+        self.dlg.btn_add.clicked.connect(self.add_group, Qt.UniqueConnection)
         self.dlg.btn_remove.clicked.connect(self.remove_group)
         self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
         self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
@@ -660,9 +674,9 @@ class FlairInferenceTask(QgsTask):
                     red = int(parts[1])
                     green = int(parts[2])
                     blue = int(parts[3])
-                    
+                    label = str(parts[4])
                     color = QColor(red, green, blue)
-                    palette_class = QgsPalettedRasterRenderer.Class(pixel_value, color, str(pixel_value))
+                    palette_class = QgsPalettedRasterRenderer.Class(pixel_value, color, label)
                     palette_classes.append(palette_class)
         
         provider = layer.dataProvider()

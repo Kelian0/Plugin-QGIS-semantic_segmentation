@@ -43,6 +43,7 @@ class SemanticSegmentationDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.button_box.rejected.connect(self.reject)
 
         self.layer_combo_red.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.layer_combo_green.setFilters(QgsMapLayerProxyModel.RasterLayer)
