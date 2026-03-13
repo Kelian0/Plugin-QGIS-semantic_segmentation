@@ -270,6 +270,62 @@ class SemanticSegmentation:
         #TODO mise à jour du fichier de config des groupes
         pass
 
+    def get_color(self, class_name, file_path):
+        with open(file_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split()
+                current_class = parts[5]
+                if current_class == class_name:
+                    r = int(parts[1])
+                    g = int(parts[2])
+                    b = int(parts[3])
+                    return f"#{r:02x}{g:02x}{b:02x}"
+                    
+
+    def make_group_color_dict(self):
+        config = {}
+        row_count = self.dlg.tableWidget.rowCount()
+        
+        for row in range(row_count):
+            item_name = self.dlg.tableWidget.item(row, 0)
+            
+            if item_name != None:
+                group_name = item_name.text()
+                
+                color_widget = self.dlg.tableWidget.cellWidget(row, 1)
+                group_color = "#FFFFFF" 
+                
+                if color_widget != None:
+                    group_color = color_widget.color().name()
+                    
+                config[group_name] = {
+                    "color": group_color,
+                    "classes": []
+                }
+                
+        tree_root = self.dlg.treeWidget.invisibleRootItem()
+        item_count = tree_root.childCount()
+        
+        for i in range(item_count):
+            tree_item = tree_root.child(i)
+            item_name = tree_item.text(0)
+            
+            if item_name in config:
+                class_count = tree_item.childCount()
+                
+                for j in range(class_count):
+                    base_class_item = tree_item.child(j)
+                    base_class_name = base_class_item.text(0)
+                    config[item_name]["classes"].append(base_class_name)
+                    
+            if item_name not in config:
+                config[item_name] = {
+                    "color": self.get_color(item_name.lower().replace(" ", "_"),os.path.join(self.plugin_dir,"color.clr")),
+                    "classes": [item_name]
+                }
+                    
+        return config
+                    
     def remove_group(self):
         selected_items = self.dlg.treeWidget.selectedItems()
         
@@ -294,8 +350,7 @@ class SemanticSegmentation:
                 tree_root.addChild(item)
 
             self.remove_from_table_by_text(item_text)
-    
-    
+      
     def remove_from_table_by_text(self, text):
         row_count = self.dlg.tableWidget.rowCount()
         
@@ -674,7 +729,7 @@ class FlairInferenceTask(QgsTask):
                     red = int(parts[1])
                     green = int(parts[2])
                     blue = int(parts[3])
-                    label = str(parts[4])
+                    label = str(parts[-1])
                     color = QColor(red, green, blue)
                     palette_class = QgsPalettedRasterRenderer.Class(pixel_value, color, label)
                     palette_classes.append(palette_class)

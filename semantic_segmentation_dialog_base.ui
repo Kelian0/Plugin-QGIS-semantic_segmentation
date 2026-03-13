@@ -24,7 +24,7 @@
        <string>Paramètres</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="0">
+       <item row="0" column="0">
         <widget class="QScrollArea" name="scrollArea">
          <property name="widgetResizable">
           <bool>true</bool>
@@ -33,7 +33,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-638</y>
+            <y>-431</y>
             <width>1131</width>
             <height>1528</height>
            </rect>
@@ -110,7 +110,7 @@
            <item>
             <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Étendue de découpage</string>
+              <string>Étendue de découpage [optionnel]</string>
              </property>
             </widget>
            </item>
@@ -189,14 +189,14 @@
                   <widget class="QCheckBox" name="checkBox_13">
                    <property name="font">
                     <font>
-                     <strikeout>true</strikeout>
+                     <strikeout>false</strikeout>
                     </font>
                    </property>
                    <property name="text">
                     <string>Swimming Pool</string>
                    </property>
                    <property name="checked">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
@@ -204,14 +204,14 @@
                   <widget class="QCheckBox" name="checkBox_11">
                    <property name="font">
                     <font>
-                     <strikeout>true</strikeout>
+                     <strikeout>false</strikeout>
                     </font>
                    </property>
                    <property name="text">
                     <string>Snow</string>
                    </property>
                    <property name="checked">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
@@ -219,14 +219,14 @@
                   <widget class="QCheckBox" name="checkBox_15">
                    <property name="font">
                     <font>
-                     <strikeout>true</strikeout>
+                     <strikeout>false</strikeout>
                     </font>
                    </property>
                    <property name="text">
                     <string>Greenhouse</string>
                    </property>
                    <property name="checked">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
@@ -234,14 +234,14 @@
                   <widget class="QCheckBox" name="checkBox_6">
                    <property name="font">
                     <font>
-                     <strikeout>true</strikeout>
+                     <strikeout>false</strikeout>
                     </font>
                    </property>
                    <property name="text">
                     <string>Vineyard</string>
                    </property>
                    <property name="checked">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
