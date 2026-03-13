@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1187</width>
-    <height>1229</height>
+    <height>1025</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,7 +33,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-436</y>
+            <y>-351</y>
             <width>1131</width>
             <height>1528</height>
            </rect>
@@ -151,7 +151,7 @@
              </property>
              <layout class="QGridLayout" name="gridLayout_3">
               <item row="0" column="0">
-               <widget class="QgsCollapsibleGroupBox" name="class_selection_box">
+               <widget class="QgsCollapsibleGroupBox" name="ClassSelection">
                 <property name="title">
                  <string>Classes à exclure (non présentes dans la zone séléctionnée)</string>
                 </property>
@@ -324,15 +324,21 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QgsCollapsibleGroupBox" name="mGroupBox_2">
+               <widget class="QgsCollapsibleGroupBox" name="GroupCreation">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
                 <property name="title">
-                 <string>Classes Personalisées</string>
+                 <string>Groupes Personnalisés</string>
+                </property>
+                <property name="flat">
+                 <bool>false</bool>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
                 </property>
                 <property name="checked">
-                 <bool>true</bool>
+                 <bool>false</bool>
                 </property>
                 <property name="collapsed">
                  <bool>false</bool>

@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox, QButtonGroup
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -32,6 +32,7 @@ from .semantic_segmentation_dialog import SemanticSegmentationDialog,InstallDial
 from .install_env import setup_flair_environment
 
 import subprocess
+import processing
 import os
 import yaml
 from qgis.core import QgsProject, QgsTask, QgsApplication, QgsMessageLog, Qgis, QgsPalettedRasterRenderer
@@ -403,46 +404,78 @@ class SemanticSegmentation:
                 self.dlg.tableWidget.selectRow(row)
                 
         self.dlg.tableWidget.blockSignals(False)
-
-    def run(self):
-        if not self.check_env():
-            is_installed = self.show_installation_dialog()
-            if not is_installed:
-                return 
-
-        if self.first_start:
-            self.first_start = False
-            self.dlg = SemanticSegmentationDialog()
-
-            self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
-            canvas_extent = self.iface.mapCanvas().extent()
-            canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
-            self.dlg.extent_widget.setCurrentExtent(canvas_extent, canvas_crs)
-
-        check_boxes = self.dlg.class_selection_box.findChildren(QCheckBox)
-        for cb in check_boxes:
-            cb.toggled.connect(lambda checked, current_cb=cb: self.toggle_strikethrough(checked, current_cb))
-
-        # Connect the buttons to the functions
-        self.dlg.btn_add.clicked.connect(self.add_group)
-        self.dlg.btn_remove.clicked.connect(self.remove_group)
-        self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
-        self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
-        self.dlg.tableWidget.itemSelectionChanged.connect(self.sync_table_to_tree_selection)
-        self.dlg.treeWidget.itemSelectionChanged.connect(self.sync_tree_to_table_selection)
+    
+    def toggle_exclusive_groupboxes(self, is_checked, other_groupbox):
+        other_groupbox.blockSignals(True)
         
-        if not self.dlg.exec_():
-            return
-        
+        if is_checked:
+            other_groupbox.setChecked(False)
+        else:
+            other_groupbox.setChecked(True)
+            
+        other_groupbox.blockSignals(False)
 
-        layer_name = self.dlg.comboBox.currentText()
-        layers = QgsProject.instance().mapLayersByName(layer_name)
-        if not layers:
-            self.iface.messageBar().pushMessage("Error", "Selected layer not found", level=2)
-            return
-        
+    def on_task_completed(self):
+        QMessageBox.information(self.dlg, "Finished", "Segmentation Terminée")
+        self.dlg.accept()
 
-        input_img_path = layers[0].source()
+    def on_task_terminated(self):
+        QMessageBox.warning(self.dlg, "Error", "Task failed or was canceled")
+
+    def generate_vrt(self,layer,band,output_name):
+        if layer != None:
+            vrt_r = os.path.join(self.plugin_dir, output_name)
+            
+            params_r ={
+                'INPUT': layer.source(),
+                'EXTRA': f'-b {band}',
+                'OUTPUT': vrt_r
+            }
+            
+            processing.run("gdal:translate", params_r)
+            return vrt_r
+
+    def run_prediction(self):
+        extracted_vrts = []
+
+        layer_r = self.dlg.layer_combo_red.currentLayer()
+        band_r = self.dlg.band_combo_red.currentBand()
+        layer_g = self.dlg.layer_combo_green.currentLayer()
+        band_g = self.dlg.band_combo_green.currentBand()
+        layer_b = self.dlg.layer_combo_blue.currentLayer()
+        band_b = self.dlg.band_combo_blue.currentBand()
+        layer_i = self.dlg.layer_combo_nir.currentLayer()
+        band_i = self.dlg.band_combo_nir.currentBand()
+        
+        extracted_vrts.append(self.generate_vrt(layer_r,band_r,"temp_r.vrt"))
+        extracted_vrts.append(self.generate_vrt(layer_g,band_g,"temp_g.vrt"))
+        extracted_vrts.append(self.generate_vrt(layer_b,band_b,"temp_b.vrt"))
+        extracted_vrts.append(self.generate_vrt(layer_i,band_i,"temp_i.vrt"))
+
+        if len(extracted_vrts) > 2:
+            temp_vrt = os.path.join(self.plugin_dir, "temp_stack.vrt")
+            final_vrt = os.path.join(self.plugin_dir, "final_stack.vrt")
+            
+            params_stack = {
+                'INPUT': extracted_vrts,
+                'RESOLUTION': 1,
+                'SEPARATE': True,
+                'OUTPUT': temp_vrt
+            }
+            
+            processing.run("gdal:buildvirtualraster", params_stack)
+            extent = self.dlg.extent_widget.outputExtent()
+            if not extent.isEmpty():
+                extent_str = f"{extent.xMinimum()},{extent.xMaximum()},{extent.yMinimum()},{extent.yMaximum()}"
+                params_emprise = {
+                    'INPUT':temp_vrt,
+                    'PROJWIN':extent_str,
+                    'OUTPUT':final_vrt,
+                }
+                processing.run("gdal:cliprasterbyextent", params_emprise )
+
+
+        input_img_path = final_vrt
 
         output_full_path = self.dlg.lineEdit.text()
         if not output_full_path:
@@ -502,8 +535,51 @@ class SemanticSegmentation:
             clr_path=clr_file_path,
             iface=self.iface
         )
+        self.task.taskCompleted.connect(self.on_task_completed)
+        self.task.taskTerminated.connect(self.on_task_terminated)
+        
         QgsApplication.taskManager().addTask(self.task)
         self.iface.messageBar().pushMessage("Info", "Analysis started in background", level=0)
+
+
+
+    def run(self):
+        if not self.check_env():
+            is_installed = self.show_installation_dialog()
+            if not is_installed:
+                return 
+
+        if self.first_start:
+            self.first_start = False
+            self.dlg = SemanticSegmentationDialog()
+
+            self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
+            canvas_extent = self.iface.mapCanvas().extent()
+            canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
+            self.dlg.extent_widget.setCurrentExtent(canvas_extent, canvas_crs)
+
+        check_boxes = self.dlg.ClassSelection.findChildren(QCheckBox)
+        for cb in check_boxes:
+            cb.toggled.connect(lambda checked, current_cb=cb: self.toggle_strikethrough(checked, current_cb))
+
+        self.dlg.ClassSelection.toggled.connect(
+            lambda checked, other=self.dlg.GroupCreation: self.toggle_exclusive_groupboxes(checked, other))
+        
+        self.dlg.GroupCreation.toggled.connect(
+            lambda checked, other=self.dlg.ClassSelection: self.toggle_exclusive_groupboxes(checked, other))
+
+        # Connect the buttons to the functions
+        self.dlg.btn_add.clicked.connect(self.add_group)
+        self.dlg.btn_remove.clicked.connect(self.remove_group)
+        self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
+        self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
+        self.dlg.tableWidget.itemSelectionChanged.connect(self.sync_table_to_tree_selection)
+        self.dlg.treeWidget.itemSelectionChanged.connect(self.sync_tree_to_table_selection)
+        self.dlg.button_box.accepted.connect(self.run_prediction)
+        
+        if not self.dlg.exec_():
+            return
+
 
 
 class FlairInferenceTask(QgsTask):
