@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -230,29 +230,179 @@ class SemanticSegmentation:
         checkbox.setFont(font)
     
 
-    def add_global_class(self):
+    def add_group(self):
         text, ok_pressed = QInputDialog.getText(self.dlg, "Nouveau Groupe", "Entrer un nom de groupe")
-        
+
         if ok_pressed:
             if text:
-                item = QTreeWidgetItem(self.dlg.treeWidget)
-                item.setText(0, text)
+                existing_items = self.dlg.treeWidget.findItems(text, Qt.MatchExactly | Qt.MatchRecursive, 0)
+                
+                if len(existing_items) > 0:
+                    QMessageBox.warning(self.dlg, "Erreur", "Ce nom de groupe existe déjà")
+                    return
+                treeitem = QTreeWidgetItem(self.dlg.treeWidget)
+                treeitem.setText(0, text)
+                treeitem.setData(0, Qt.UserRole, text)                
                 
                 # Allow dropping items inside this global class
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled | Qt.ItemIsEditable)
-                item.setExpanded(True)
+                treeitem.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled | Qt.ItemIsEditable)
+                treeitem.setExpanded(True)
+                
+                row_index = self.dlg.tableWidget.rowCount()
+                self.dlg.tableWidget.insertRow(row_index)
+                
+                tableitem1 = QTableWidgetItem(text)
+                tableitem1.setData(Qt.UserRole, text)
+                tableitem2 = QTableWidgetItem("COLOR")
+                
+                self.dlg.tableWidget.setItem(row_index, 0, tableitem1)
+                self.dlg.tableWidget.setItem(row_index, 1, tableitem2)
 
-    def remove_selected_item(self):
-        root = self.dlg.treeWidget.invisibleRootItem()
+    def remove_group(self):
         selected_items = self.dlg.treeWidget.selectedItems()
         
         for item in selected_items:
+            if not (item.flags() & Qt.ItemIsEditable):
+                continue
+            item_text = item.text(0)
             parent = item.parent()
+            tree_root = self.dlg.treeWidget.invisibleRootItem()
             
             if parent == None:
-                root.removeChild(item)
-            else:
+                child_count = item.childCount()
+                
+                for i in range(child_count - 1, -1, -1):
+                    child = item.takeChild(i)
+                    tree_root.addChild(child)
+                    
+                tree_root.removeChild(item)
+            
+            if parent != None:
                 parent.removeChild(item)
+                tree_root.addChild(item)
+
+            self.remove_from_table_by_text(item_text)
+    
+    
+    def remove_from_table_by_text(self, text):
+        row_count = self.dlg.tableWidget.rowCount()
+        
+        for row in range(row_count - 1, -1, -1):
+            item = self.dlg.tableWidget.item(row, 0)
+            
+            if item != None:
+                if item.text() == text:
+                    item_table = self.dlg.tableWidget.item(row, 0)
+                    if item_table != None:
+                        item_text = item_table.text()
+                        self.dlg.tableWidget.removeRow(row)
+                        
+                        tree_items = self.dlg.treeWidget.findItems(item_text, Qt.MatchExactly | Qt.MatchRecursive, 0)
+                        
+                        for tree_item in tree_items:
+                            self.delete_tree_item(tree_item)
+    
+    def on_tree_item_changed(self, item, column):
+        new_text = item.text(0)
+        old_text = item.data(0, Qt.UserRole)
+        
+        if old_text == None:
+            return
+            
+        if new_text == old_text:
+            return
+            
+        existing_items = self.dlg.treeWidget.findItems(new_text, Qt.MatchExactly | Qt.MatchRecursive, 0)
+        
+        if len(existing_items) > 1:
+            QMessageBox.warning(self.dlg, "Erreur", "Ce nom de groupe existe déjà")
+            self.dlg.treeWidget.blockSignals(True)
+            item.setText(0, old_text)
+            self.dlg.treeWidget.blockSignals(False)
+            return
+            
+        row_count = self.dlg.tableWidget.rowCount()
+        
+        for row in range(row_count):
+            table_item = self.dlg.tableWidget.item(row, 0)
+            
+            if table_item != None:
+                if table_item.text() == old_text:
+                    table_item.setText(new_text)
+                    
+        item.setData(0, Qt.UserRole, new_text)
+
+    def on_table_item_changed(self, item):
+        if item.column() != 0:
+            return
+            
+        new_text = item.text()
+        old_text = item.data(Qt.UserRole)
+        
+        if old_text == None:
+            return
+            
+        if new_text == old_text:
+            return
+            
+        matching_items = self.dlg.tableWidget.findItems(new_text, Qt.MatchExactly)
+        matching_tree = self.dlg.treeWidget.findItems(new_text, Qt.MatchExactly | Qt.MatchRecursive, 0)
+        
+        if len(matching_items) > 1:
+            QMessageBox.warning(self.dlg, "Erreur", "Ce nom de groupe existe déjà")
+            self.dlg.tableWidget.blockSignals(True)
+            item.setText(old_text)
+            self.dlg.tableWidget.blockSignals(False)
+            return
+    
+        if len(matching_tree) > 0:
+            QMessageBox.warning(self.dlg, "Erreur", "Ce nom de groupe existe déjà")
+            self.dlg.tableWidget.blockSignals(True)
+            item.setText(old_text)
+            self.dlg.tableWidget.blockSignals(False)
+            return
+            
+        tree_items = self.dlg.treeWidget.findItems(old_text, Qt.MatchExactly | Qt.MatchRecursive, 0)
+        
+        for tree_item in tree_items:
+            self.dlg.treeWidget.blockSignals(True)
+            tree_item.setText(0, new_text)
+            tree_item.setData(0, Qt.UserRole, new_text)
+            self.dlg.treeWidget.blockSignals(False)
+            
+        item.setData(Qt.UserRole, new_text)
+
+    def sync_table_to_tree_selection(self):
+        self.dlg.treeWidget.blockSignals(True)
+        self.dlg.treeWidget.clearSelection()
+        
+        selected_items = self.dlg.tableWidget.selectedItems()
+        
+        for item in selected_items:
+            if item.column() == 0:
+                group_name = item.text()
+                tree_items = self.dlg.treeWidget.findItems(group_name, Qt.MatchExactly | Qt.MatchRecursive, 0)
+                
+                for tree_item in tree_items:
+                    tree_item.setSelected(True)
+                    
+        self.dlg.treeWidget.blockSignals(False)
+
+    def sync_tree_to_table_selection(self):
+        self.dlg.tableWidget.blockSignals(True)
+        self.dlg.tableWidget.clearSelection()
+        
+        selected_items = self.dlg.treeWidget.selectedItems()
+        
+        for item in selected_items:
+            group_name = item.text(0)
+            table_items = self.dlg.tableWidget.findItems(group_name, Qt.MatchExactly)
+            
+            for table_item in table_items:
+                row = table_item.row()
+                self.dlg.tableWidget.selectRow(row)
+                
+        self.dlg.tableWidget.blockSignals(False)
 
     def run(self):
         if not self.check_env():
@@ -274,9 +424,12 @@ class SemanticSegmentation:
             cb.toggled.connect(lambda checked, current_cb=cb: self.toggle_strikethrough(checked, current_cb))
 
         # Connect the buttons to the functions
-        self.dlg.btn_add.clicked.connect(self.add_global_class)
-        self.dlg.btn_remove.clicked.connect(self.remove_selected_item)
-
+        self.dlg.btn_add.clicked.connect(self.add_group)
+        self.dlg.btn_remove.clicked.connect(self.remove_group)
+        self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
+        self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
+        self.dlg.tableWidget.itemSelectionChanged.connect(self.sync_table_to_tree_selection)
+        self.dlg.treeWidget.itemSelectionChanged.connect(self.sync_tree_to_table_selection)
         
         if not self.dlg.exec_():
             return
@@ -355,7 +508,7 @@ class SemanticSegmentation:
 
 class FlairInferenceTask(QgsTask):
     """Background task for FLAIR inference to keep QGIS responsive"""
-    
+
     def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
