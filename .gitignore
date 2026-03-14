@@ -5,6 +5,8 @@
 *.tiff
 *.xml
 *.vrt
+color_grouped.clr
+group_config_temp.json
 
 ### Archive ###
 flair_env/*

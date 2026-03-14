@@ -33,7 +33,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-431</y>
+            <y>-539</y>
             <width>1131</width>
             <height>1528</height>
            </rect>
@@ -174,7 +174,7 @@
                  <item row="1" column="1">
                   <widget class="QCheckBox" name="checkBox_10">
                    <property name="text">
-                    <string>Decidous</string>
+                    <string>Deciduous</string>
                    </property>
                   </widget>
                  </item>
@@ -268,7 +268,7 @@
                     <bool>false</bool>
                    </property>
                    <property name="text">
-                    <string>Herbaceous</string>
+                    <string>Herbaceous Vegetation</string>
                    </property>
                    <property name="checked">
                     <bool>false</bool>
@@ -479,7 +479,7 @@
                    </item>
                    <item>
                     <property name="text">
-                     <string>Decidous</string>
+                     <string>Deciduous</string>
                     </property>
                     <property name="flags">
                      <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsUserCheckable|ItemIsEnabled</set>
@@ -503,7 +503,7 @@
                    </item>
                    <item>
                     <property name="text">
-                     <string>Herbaceous</string>
+                     <string>Herbaceous vegetation</string>
                     </property>
                     <property name="flags">
                      <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsUserCheckable|ItemIsEnabled</set>

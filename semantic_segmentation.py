@@ -30,6 +30,7 @@ from .resources import *
 # Import the code for the dialog
 from .semantic_segmentation_dialog import SemanticSegmentationDialog,InstallDialog
 from .install_env import setup_flair_environment
+from .utils import *
 
 import subprocess
 import processing
@@ -37,6 +38,8 @@ import random
 import json
 import os
 import yaml
+import numpy as np
+from osgeo import gdal
 from qgis.core import QgsProject, QgsTask, QgsApplication, QgsMessageLog, Qgis, QgsPalettedRasterRenderer
 from qgis.gui import QgsColorButton
 
@@ -222,16 +225,7 @@ class SemanticSegmentation:
         self.install_task = InstallEnv("Installing Conda Env...", self.plugin_dir, self.install_dlg)
         QgsApplication.taskManager().addTask(self.install_task)
     
-    def toggle_strikethrough(self, is_checked, checkbox):
-        font = checkbox.font()
-        
-        if is_checked:
-            font.setStrikeOut(True)
-        else:
-            font.setStrikeOut(False)
-            
-        checkbox.setFont(font)
-    
+
 
     def add_group(self):
         text, ok_pressed = QInputDialog.getText(self.dlg, "Nouveau Groupe", "Entrer un nom de groupe")
@@ -270,20 +264,9 @@ class SemanticSegmentation:
         #TODO mise à jour du fichier de config des groupes
         pass
 
-    def get_color(self, class_name, file_path):
-        with open(file_path, 'r') as file:
-            for line in file:
-                parts = line.strip().split()
-                current_class = parts[5]
-                if current_class == class_name:
-                    r = int(parts[1])
-                    g = int(parts[2])
-                    b = int(parts[3])
-                    return f"#{r:02x}{g:02x}{b:02x}"
-                    
-
+    
     def make_group_color_dict(self):
-        config = {}
+        group_config = {}
         row_count = self.dlg.tableWidget.rowCount()
         
         for row in range(row_count):
@@ -298,7 +281,7 @@ class SemanticSegmentation:
                 if color_widget != None:
                     group_color = color_widget.color().name()
                     
-                config[group_name] = {
+                group_config[group_name] = {
                     "color": group_color,
                     "classes": []
                 }
@@ -310,21 +293,24 @@ class SemanticSegmentation:
             tree_item = tree_root.child(i)
             item_name = tree_item.text(0)
             
-            if item_name in config:
+            if item_name in group_config:
                 class_count = tree_item.childCount()
                 
                 for j in range(class_count):
                     base_class_item = tree_item.child(j)
                     base_class_name = base_class_item.text(0)
-                    config[item_name]["classes"].append(base_class_name)
+                    group_config[item_name]["classes"].append(base_class_name)
                     
-            if item_name not in config:
-                config[item_name] = {
-                    "color": self.get_color(item_name.lower().replace(" ", "_"),os.path.join(self.plugin_dir,"color.clr")),
+            if item_name not in group_config:
+                group_config[item_name] = {
+                    "color": get_color(item_name.lower().replace(" ", "_"),os.path.join(self.plugin_dir,"color.clr")),
                     "classes": [item_name]
                 }
                     
-        return config
+        with open(os.path.join(self.plugin_dir,"group_config_temp.json"), "w", encoding="utf-8") as f:
+            json.dump(group_config, f, ensure_ascii=False, indent=4)
+
+        return group_config
                     
     def remove_group(self):
         selected_items = self.dlg.treeWidget.selectedItems()
@@ -473,16 +459,6 @@ class SemanticSegmentation:
                 self.dlg.tableWidget.selectRow(row)
                 
         self.dlg.tableWidget.blockSignals(False)
-    
-    def toggle_exclusive_groupboxes(self, is_checked, other_groupbox):
-        other_groupbox.blockSignals(True)
-        
-        if is_checked:
-            other_groupbox.setChecked(False)
-        else:
-            other_groupbox.setChecked(True)
-            
-        other_groupbox.blockSignals(False)
 
     def on_task_completed(self):
         QMessageBox.information(self.dlg, "Finished", "Segmentation Terminée")
@@ -505,6 +481,8 @@ class SemanticSegmentation:
             return vrt_r
 
     def run_prediction(self):
+
+        
         extracted_vrts = []
 
         layer_r = self.dlg.layer_combo_red.currentLayer()
@@ -533,8 +511,8 @@ class SemanticSegmentation:
             }
             
             processing.run("gdal:buildvirtualraster", params_stack)
-            extent = self.dlg.extent_widget.outputExtent()
-            if not extent.isEmpty():
+            if self.dlg.extent_widget.isValid():
+                extent = self.dlg.extent_widget.outputExtent()
                 extent_str = f"{extent.xMinimum()},{extent.xMaximum()},{extent.yMinimum()},{extent.yMaximum()}"
                 params_emprise = {
                     'INPUT':temp_vrt,
@@ -542,9 +520,10 @@ class SemanticSegmentation:
                     'OUTPUT':final_vrt,
                 }
                 processing.run("gdal:cliprasterbyextent", params_emprise )
+                input_img_path = final_vrt
+            else:
+                input_img_path = temp_vrt
 
-
-        input_img_path = final_vrt
 
         output_full_path = self.dlg.lineEdit.text()
         if not output_full_path:
@@ -555,6 +534,16 @@ class SemanticSegmentation:
         output_name = os.path.basename(output_full_path)
         model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
 
+        # TODO Regarder l'état du bouton pour le choix du mode de prédictioin
+        # self.dlg.GroupCreation    ---> "output_type" : "argmax"
+        # self.dlg.ClassSelection   ---> "output_type" : "class_prob"
+
+        if self.dlg.ClassSelection.isChecked():
+            output_type_val = "class_prob"
+        else :
+            output_type_val = "argmax"
+
+
         config = {
             "output_path": output_path,
             "output_name": output_name,
@@ -562,7 +551,7 @@ class SemanticSegmentation:
             "channels": [1, 2, 3, 4],
             "img_pixels_detection": 512,
             "margin": 128,
-            "output_type": "argmax",
+            "output_type": output_type_val,
             "n_classes": 19,
             "model_weights": model_path,
             "model_framework": {
@@ -602,7 +591,8 @@ class SemanticSegmentation:
             yaml_path=temp_yaml_path,
             output_tif=os.path.join(output_path, output_name),
             clr_path=clr_file_path,
-            iface=self.iface
+            iface=self.iface,
+            group_config = self.make_group_color_dict()
         )
         self.task.taskCompleted.connect(self.on_task_completed)
         self.task.taskTerminated.connect(self.on_task_terminated)
@@ -618,27 +608,24 @@ class SemanticSegmentation:
             if not is_installed:
                 return 
 
-        if self.first_start:
-            self.first_start = False
-            self.dlg = SemanticSegmentationDialog()
+        self.dlg = SemanticSegmentationDialog()
 
-            self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
-            canvas_extent = self.iface.mapCanvas().extent()
-            canvas_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
-            self.dlg.extent_widget.setCurrentExtent(canvas_extent, canvas_crs)
+        self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
+        self.dlg.extent_widget.clear()
 
         check_boxes = self.dlg.ClassSelection.findChildren(QCheckBox)
+
         for cb in check_boxes:
-            cb.toggled.connect(lambda checked, current_cb=cb: self.toggle_strikethrough(checked, current_cb))
+            cb.toggled.connect(lambda checked, current_cb=cb: toggle_strikethrough(checked, current_cb))
 
         self.dlg.ClassSelection.toggled.connect(
-            lambda checked, other=self.dlg.GroupCreation: self.toggle_exclusive_groupboxes(checked, other))
+            lambda checked, other=self.dlg.GroupCreation: toggle_exclusive_groupboxes(checked, other))
         
         self.dlg.GroupCreation.toggled.connect(
-            lambda checked, other=self.dlg.ClassSelection: self.toggle_exclusive_groupboxes(checked, other))
+            lambda checked, other=self.dlg.ClassSelection: toggle_exclusive_groupboxes(checked, other))
 
         # Connect the buttons to the functions
-        self.dlg.btn_add.clicked.connect(self.add_group, Qt.UniqueConnection)
+        self.dlg.btn_add.clicked.connect(self.add_group)
         self.dlg.btn_remove.clicked.connect(self.remove_group)
         self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
         self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
@@ -654,7 +641,7 @@ class SemanticSegmentation:
 class FlairInferenceTask(QgsTask):
     """Background task for FLAIR inference to keep QGIS responsive"""
 
-    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface):
+    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface,group_config):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
         self.script_path = script_path
@@ -663,6 +650,8 @@ class FlairInferenceTask(QgsTask):
         self.iface = iface
         self.process = None
         self.clr_path = clr_path
+        self.mode = "group_creation" #TODO either class selection or group creation
+        self.group_config = group_config
 
     def run(self):
         try:
@@ -706,22 +695,108 @@ class FlairInferenceTask(QgsTask):
         QgsMessageLog.logMessage("Finished method started", "FLAIR", Qgis.Info)
         
         if result == True:
-            layer_name = os.path.basename(self.output_tif)
-            layer = self.iface.addRasterLayer(self.output_tif, layer_name)
+            final_tif = self.output_tif
+            final_clr = self.clr_path
+            if self.mode == "group_creation":
+                final_tif, final_clr = self.post_traitement_group_creation()
+
+            layer_name = os.path.basename(final_tif)
+            layer = self.iface.addRasterLayer(final_tif, layer_name)
             
             if layer != None:
-                if os.path.exists(self.clr_path):
-                    self.apply_color_palette(layer)
+                if os.path.exists(final_clr):
+                    self.apply_color_palette(layer, final_clr)
                     
             self.iface.messageBar().pushMessage("Success", "Inference complete", level=Qgis.Success)
             
         if result == False:
             self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
 
-    def apply_color_palette(self, layer):
-        palette_classes = []
+    def post_traitement_group_creation(self):
+        grouped_tif = self.output_tif.replace(".tif", "_grouped.tif")
+        grouped_clr = self.clr_path.replace(".clr", "_grouped.clr")
+        
+        # Creation of the new color file and reading of the group_config
+
+        name_to_index = {}
         
         with open(self.clr_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split()
+                
+                if len(parts) >= 6:
+                    
+                    index = int(parts[0])
+                    name = parts[5].lower().replace(" ", "_")
+                    name_to_index[name] = index
+                    
+        reclass_map = {}
+        new_clr_lines = []
+        
+        for group_name, group_data in self.group_config.items():
+            hex_color = group_data["color"].lstrip('#')
+            classes = group_data["classes"]
+            
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+            
+            group_indices = []
+            
+            for class_name in classes:
+                formatted_name = class_name.lower().replace(" ", "_")
+                
+                if formatted_name in name_to_index:
+                    group_indices.append(name_to_index[formatted_name])
+                    
+            if len(group_indices) > 0:
+                min_index = min(group_indices)
+                
+                for old_idx in group_indices:
+                    reclass_map[old_idx] = min_index
+                    
+                formatted_group = group_name.lower().replace(" ", "_")
+                new_clr_lines.append(f"{min_index} {r} {g} {b} 255 {formatted_group}\n")
+                
+        with open(grouped_clr, 'w') as file:
+            file.writelines(new_clr_lines)
+            
+        # Modification of the output prediction
+
+        ds = gdal.Open(self.output_tif)
+        band = ds.GetRasterBand(1)
+        data = band.ReadAsArray()
+        
+        reclassified_data = np.copy(data)
+        
+        for old_val, new_val in reclass_map.items():
+            if old_val != new_val:
+                reclassified_data[data == old_val] = new_val
+                
+        driver = gdal.GetDriverByName("GTiff")
+        out_ds = driver.Create(grouped_tif, ds.RasterXSize, ds.RasterYSize, 1, band.DataType)
+        
+        out_ds.SetProjection(ds.GetProjection())
+        out_ds.SetGeoTransform(ds.GetGeoTransform())
+        
+        out_band = out_ds.GetRasterBand(1)
+        out_band.WriteArray(reclassified_data)
+        
+        nodata = band.GetNoDataValue()
+        
+        if nodata != None:
+            out_band.SetNoDataValue(nodata)
+            
+        out_band.FlushCache()
+        out_ds = None
+        ds = None
+        
+        return grouped_tif, grouped_clr
+
+    def apply_color_palette(self, layer, final_clr):
+        palette_classes = []
+        
+        with open(final_clr, 'r') as file:
             for line in file:
                 parts = line.strip().split()
                 if len(parts) >= 4:
