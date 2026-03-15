@@ -6,6 +6,7 @@
 *.xml
 *.vrt
 color_grouped.clr
+color_filtered.clr
 group_config_temp.json
 
 ### Archive ###

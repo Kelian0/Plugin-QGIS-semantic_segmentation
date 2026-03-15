@@ -21,7 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox
 
@@ -480,8 +480,12 @@ class SemanticSegmentation:
             processing.run("gdal:translate", params_r)
             return vrt_r
 
-    def run_prediction(self):
+    def update_log_ui(self, message):
+            if self.dlg.text_edit_journal != None:
+                self.dlg.text_edit_journal.append(message)
 
+    def run_prediction(self):
+        self.dlg.tabWidget.setCurrentIndex(1)
         
         extracted_vrts = []
 
@@ -534,14 +538,19 @@ class SemanticSegmentation:
         output_name = os.path.basename(output_full_path)
         model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
 
-        # TODO Regarder l'état du bouton pour le choix du mode de prédictioin
-        # self.dlg.GroupCreation    ---> "output_type" : "argmax"
-        # self.dlg.ClassSelection   ---> "output_type" : "class_prob"
 
         if self.dlg.ClassSelection.isChecked():
+            selected_classes = []
             output_type_val = "class_prob"
-        else :
+            current_mode = "class_selection"
+            check_boxes = self.dlg.ClassSelection.findChildren(QCheckBox)
+            for cb in check_boxes:
+                if not cb.isChecked():
+                    formatted_name = cb.text().lower().replace(" ", "_")
+                    selected_classes.append(formatted_name)
+        else :  
             output_type_val = "argmax"
+            current_mode = "group_creation"
 
 
         config = {
@@ -592,8 +601,11 @@ class SemanticSegmentation:
             output_tif=os.path.join(output_path, output_name),
             clr_path=clr_file_path,
             iface=self.iface,
-            group_config = self.make_group_color_dict()
+            mode = current_mode,
+            group_config = self.make_group_color_dict() if current_mode == "group_creation" else None,
+            class_config = selected_classes if current_mode == "class_selection" else None
         )
+        self.task.log_message_signal.connect(self.update_log_ui)
         self.task.taskCompleted.connect(self.on_task_completed)
         self.task.taskTerminated.connect(self.on_task_terminated)
         
@@ -609,7 +621,7 @@ class SemanticSegmentation:
                 return 
 
         self.dlg = SemanticSegmentationDialog()
-
+        self.dlg.tabWidget.setCurrentIndex(0)
         self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
         self.dlg.extent_widget.clear()
 
@@ -641,7 +653,10 @@ class SemanticSegmentation:
 class FlairInferenceTask(QgsTask):
     """Background task for FLAIR inference to keep QGIS responsive"""
 
-    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface,group_config):
+    log_message_signal = pyqtSignal(str)
+    progress_value_signal = pyqtSignal(int)
+
+    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface,mode,group_config,class_config):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
         self.script_path = script_path
@@ -650,8 +665,9 @@ class FlairInferenceTask(QgsTask):
         self.iface = iface
         self.process = None
         self.clr_path = clr_path
-        self.mode = "group_creation" #TODO either class selection or group creation
+        self.mode = mode 
         self.group_config = group_config
+        self.class_config = class_config
 
     def run(self):
         try:
@@ -679,7 +695,7 @@ class FlairInferenceTask(QgsTask):
                 if self.isCanceled():
                     self.process.terminate()
                     return False
-                QgsMessageLog.logMessage(line.strip(), "FLAIR", Qgis.Info)
+                self.log_message_signal.emit(line.strip())
 
             self.process.wait()
             
@@ -688,17 +704,19 @@ class FlairInferenceTask(QgsTask):
             else:
                 return False
         except Exception as error_msg:
-            QgsMessageLog.logMessage(str(error_msg), "FLAIR", Qgis.Critical)
+            self.log_message_signal.emit(str(error_msg))
             return False
     
     def finished(self, result):
-        QgsMessageLog.logMessage("Finished method started", "FLAIR", Qgis.Info)
+        self.log_message_signal.emit("Starting post processing...")
         
         if result == True:
             final_tif = self.output_tif
             final_clr = self.clr_path
             if self.mode == "group_creation":
                 final_tif, final_clr = self.post_traitement_group_creation()
+            elif self.mode == "class_selection":
+                final_tif, final_clr = self.post_traitement_class_selection()
 
             layer_name = os.path.basename(final_tif)
             layer = self.iface.addRasterLayer(final_tif, layer_name)
@@ -711,6 +729,70 @@ class FlairInferenceTask(QgsTask):
             
         if result == False:
             self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
+
+    def post_traitement_class_selection(self):
+        filtered_tif = self.output_tif.replace(".tif", "_filtered.tif")
+        filtered_clr = self.clr_path.replace(".clr", "_filtered.clr")
+        
+        if len(self.class_config) == 0:
+            return self.output_tif, self.clr_path
+            
+        name_to_index = {}
+        original_clr_lines = {}
+        
+        with open(self.clr_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split()
+                
+                if len(parts) >= 6:
+                    index = int(parts[0])
+                    name = parts[5].lower().replace(" ", "_")
+                    name_to_index[name] = index
+                    original_clr_lines[name] = line
+                    
+        selected_indices = []
+        new_clr_lines = []
+        
+        for class_name in self.class_config:
+            if class_name in name_to_index:
+                original_index = name_to_index[class_name]
+                selected_indices.append(original_index)
+                new_clr_lines.append(original_clr_lines[class_name])
+                
+        with open(filtered_clr, 'w') as file:
+            file.writelines(new_clr_lines)
+            
+        ds = gdal.Open(self.output_tif)
+        bands_data = []
+        
+        for idx in selected_indices:
+            # GDAL bands are 1-indexed, class indices are 0-indexed
+            band = ds.GetRasterBand(idx + 1)
+            bands_data.append(band.ReadAsArray())
+            
+        stacked_data = np.stack(bands_data, axis=0)
+        local_argmax = np.argmax(stacked_data, axis=0)
+        
+        final_data = np.zeros_like(local_argmax, dtype=np.uint8)
+        
+        for i in range(len(selected_indices)):
+            original_idx = selected_indices[i]
+            final_data[local_argmax == i] = original_idx
+            
+        driver = gdal.GetDriverByName("GTiff")
+        out_ds = driver.Create(filtered_tif, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
+        
+        out_ds.SetProjection(ds.GetProjection())
+        out_ds.SetGeoTransform(ds.GetGeoTransform())
+        
+        out_band = out_ds.GetRasterBand(1)
+        out_band.WriteArray(final_data)
+        out_band.FlushCache()
+        
+        out_ds = None
+        ds = None
+        
+        return filtered_tif, filtered_clr
 
     def post_traitement_group_creation(self):
         grouped_tif = self.output_tif.replace(".tif", "_grouped.tif")

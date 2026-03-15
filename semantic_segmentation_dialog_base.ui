@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -33,9 +33,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-539</y>
+            <y>0</y>
             <width>1131</width>
-            <height>1528</height>
+            <height>1495</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -171,10 +171,101 @@
                  <bool>true</bool>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_2">
+                 <item row="3" column="2">
+                  <widget class="QCheckBox" name="checkBox_11">
+                   <property name="font">
+                    <font>
+                     <strikeout>false</strikeout>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>Snow</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QCheckBox" name="checkBox_2">
+                   <property name="text">
+                    <string>Pervious Surface</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QCheckBox" name="checkBox_9">
+                   <property name="text">
+                    <string>Brushwood</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TEST&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Building</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QCheckBox" name="checkBox_14">
+                   <property name="text">
+                    <string>Argicultural Land</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QCheckBox" name="checkBox_5">
+                   <property name="text">
+                    <string>Water</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="1" column="1">
                   <widget class="QCheckBox" name="checkBox_10">
                    <property name="text">
                     <string>Deciduous</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="checkBox_7">
+                   <property name="text">
+                    <string>Coniferous</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QCheckBox" name="checkBox_6">
+                   <property name="font">
+                    <font>
+                     <strikeout>false</strikeout>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>Vineyard</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QCheckBox" name="checkBox_8">
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
+                   <property name="acceptDrops">
+                    <bool>false</bool>
+                   </property>
+                   <property name="text">
+                    <string>Herbaceous Vegetation</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
@@ -200,21 +291,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="2">
-                  <widget class="QCheckBox" name="checkBox_11">
-                   <property name="font">
-                    <font>
-                     <strikeout>false</strikeout>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>Snow</string>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="4" column="2">
                   <widget class="QCheckBox" name="checkBox_15">
                    <property name="font">
@@ -230,48 +306,10 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
-                  <widget class="QCheckBox" name="checkBox_6">
-                   <property name="font">
-                    <font>
-                     <strikeout>false</strikeout>
-                    </font>
-                   </property>
+                 <item row="2" column="0">
+                  <widget class="QCheckBox" name="checkBox_3">
                    <property name="text">
-                    <string>Vineyard</string>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="2">
-                  <widget class="QCheckBox" name="checkBox_14">
-                   <property name="text">
-                    <string>Argicultural Land</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QCheckBox" name="checkBox_5">
-                   <property name="text">
-                    <string>Water</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QCheckBox" name="checkBox_8">
-                   <property name="enabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="acceptDrops">
-                    <bool>false</bool>
-                   </property>
-                   <property name="text">
-                    <string>Herbaceous Vegetation</string>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
+                    <string>Impervious Surface</string>
                    </property>
                   </widget>
                  </item>
@@ -279,44 +317,6 @@
                   <widget class="QCheckBox" name="checkBox_4">
                    <property name="text">
                     <string>Bare Soil</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QCheckBox" name="checkBox_2">
-                   <property name="text">
-                    <string>Pervious Surface</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QCheckBox" name="checkBox">
-                   <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TEST&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                   <property name="text">
-                    <string>Building</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QCheckBox" name="checkBox_7">
-                   <property name="text">
-                    <string>Coniferous</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QCheckBox" name="checkBox_9">
-                   <property name="text">
-                    <string>Brushwood</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QCheckBox" name="checkBox_3">
-                   <property name="text">
-                    <string>Impervious Surface</string>
                    </property>
                   </widget>
                  </item>
@@ -353,34 +353,21 @@
                  <bool>true</bool>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
-                 <item row="0" column="4">
-                  <widget class="QComboBox" name="comboBox"/>
-                 </item>
-                 <item row="0" column="0" colspan="4">
-                  <widget class="QLabel" name="label">
+                 <item row="1" column="6">
+                  <widget class="QPushButton" name="pushButton">
                    <property name="text">
-                    <string>Configurations Sauvegardées</string>
+                    <string>Charger une configuration</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="0">
-                  <widget class="QPushButton" name="btn_add">
+                 <item row="1" column="5">
+                  <widget class="QPushButton" name="pushButton_2">
                    <property name="text">
-                    <string>ADD</string>
+                    <string>Sauvegarder la configuration</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
-                  <widget class="QPushButton" name="btn_remove">
-                   <property name="text">
-                    <string>SUPR</string>
-                   </property>
-                   <property name="checkable">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0" colspan="4">
+                 <item row="0" column="0" colspan="2">
                   <widget class="QTreeWidget" name="treeWidget">
                    <property name="minimumSize">
                     <size>
@@ -551,7 +538,24 @@
                    </item>
                   </widget>
                  </item>
-                 <item row="1" column="4">
+                 <item row="1" column="0">
+                  <widget class="QPushButton" name="btn_add">
+                   <property name="text">
+                    <string>ADD</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QPushButton" name="btn_remove">
+                   <property name="text">
+                    <string>SUPR</string>
+                   </property>
+                   <property name="checkable">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2" colspan="5">
                   <widget class="QTableWidget" name="tableWidget">
                    <attribute name="horizontalHeaderCascadingSectionResizes">
                     <bool>false</bool>
@@ -570,6 +574,19 @@
                     </property>
                    </column>
                   </widget>
+                 </item>
+                 <item row="1" column="2" colspan="3">
+                  <spacer name="horizontalSpacer">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                 </layout>
                </widget>
@@ -624,6 +641,30 @@
       <attribute name="title">
        <string>Journal</string>
       </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QScrollArea" name="scrollArea_2">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>1145</width>
+            <height>888</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QTextEdit" name="text_edit_journal"/>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
