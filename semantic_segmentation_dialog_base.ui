@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -34,8 +34,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>1131</width>
-            <height>1495</height>
+            <width>1145</width>
+            <height>888</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -145,6 +145,9 @@
             <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
              <property name="title">
               <string>Paramètres Avancés</string>
+             </property>
+             <property name="collapsed">
+              <bool>true</bool>
              </property>
              <property name="saveCheckedState">
               <bool>true</bool>
@@ -622,14 +625,17 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit">
-             <property name="text">
+            <widget class="QgsFileWidget" name="mQgsFileWidget">
+             <property name="defaultRoot">
               <string>/home/kelian/MasterDataScience/ResearchProject/LearningQGIS_scripting/semantic_segmentation/output.tif</string>
              </property>
+             <property name="storageMode">
+              <enum>QgsFileWidget::GetDirectory</enum>
+             </property>
+             <property name="options">
+              <set>QFileDialog::ShowDirsOnly</set>
+             </property>
             </widget>
-           </item>
-           <item>
-            <widget class="QgsFileWidget" name="mQgsFileWidget"/>
            </item>
           </layout>
          </widget>
@@ -671,7 +677,13 @@
    <item>
     <widget class="QProgressBar" name="progressBar">
      <property name="value">
-      <number>24</number>
+      <number>0</number>
+     </property>
+     <property name="textVisible">
+      <bool>false</bool>
+     </property>
+     <property name="invertedAppearance">
+      <bool>false</bool>
      </property>
     </widget>
    </item>

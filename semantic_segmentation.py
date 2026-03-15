@@ -36,6 +36,7 @@ import subprocess
 import processing
 import random
 import json
+import glob
 import re
 import os
 import yaml
@@ -463,12 +464,12 @@ class SemanticSegmentation:
 
     def on_task_completed(self):
         self.dlg.text_edit_journal.append("FINISHED")
-        QMessageBox.information(self.dlg, "Finished", "Segmentation Terminée")
+        QMessageBox.information(self.dlg, "Terminé", "Segmentation Terminée")
         self.dlg.accept()
 
     def on_task_terminated(self):
         self.dlg.text_edit_journal.append("TASK FAILED OR CANCELED")
-        QMessageBox.warning(self.dlg, "Error", "Task failed or was canceled")
+        QMessageBox.warning(self.dlg, "Erreur", "Voir le journal pour plus d'informations")
 
     def generate_vrt(self,layer,band,output_name):
         if layer != None:
@@ -518,7 +519,7 @@ class SemanticSegmentation:
             temp_vrt = os.path.join(self.plugin_dir, "temp_stack.vrt")
             final_vrt = os.path.join(self.plugin_dir, "final_stack.vrt")
             self.dlg.text_edit_journal.append("gdal:buildvirtualraster...")
-            self.update_progress_ui(3)
+            self.update_progress_ui(10)
             QCoreApplication.processEvents()
 
             params_stack = {
@@ -545,16 +546,25 @@ class SemanticSegmentation:
                 input_img_path = temp_vrt
 
         self.dlg.text_edit_journal.append("Preprocessing finished. Starting FLAIR...")
-        self.update_progress_ui(6)
+        self.update_progress_ui(20)
         QCoreApplication.processEvents()
 
-        output_full_path = self.dlg.lineEdit.text()
-        if not output_full_path:
-            self.iface.messageBar().pushMessage("Error", "No output path specified", level=2)
+        output_full_path = self.dlg.mQgsFileWidget.filePath()
+        if output_full_path == "":
+            QMessageBox.warning(self.dlg, "Error", "No output path specified")
             return
             
-        output_path = os.path.dirname(output_full_path) + "/"
+        if os.path.isdir(output_full_path) == True:
+            output_full_path = os.path.join(output_full_path, "Segmentation_temp.tif")
+            
+        output_path = os.path.dirname(output_full_path)
         output_name = os.path.basename(output_full_path)
+        
+        _, ext = os.path.splitext(output_name)
+        
+        if ext == "":
+            output_name = output_name + "_temp.tif"
+            output_full_path = os.path.join(output_path, output_name)
         model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
 
 
@@ -720,10 +730,9 @@ class FlairInferenceTask(QgsTask):
                 match = re.search(r'(\d+)%', line.strip())
                 if match == None:
                     self.log_message_signal.emit(line.strip())
-                    QgsMessageLog.logMessage(line.strip(), "FLAIR", Qgis.Info)
                 else:
                     progress = int(match.group(1))
-                    self.progress_value_signal.emit(int(10 + (progress * 0.7)))
+                    self.progress_value_signal.emit(int(20 + (progress * 0.7)))
 
 
             self.process.wait()
@@ -734,7 +743,6 @@ class FlairInferenceTask(QgsTask):
                 return False
         except Exception as error_msg:
             self.log_message_signal.emit(str(error_msg))
-            QgsMessageLog.logMessage(str(error_msg), "FLAIR", Qgis.Info)
             return False
     
     def finished(self, result):
@@ -763,8 +771,8 @@ class FlairInferenceTask(QgsTask):
             self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
 
     def post_traitement_class_selection(self):
-        filtered_tif = self.output_tif.replace(".tif", "_filtered.tif")
-        filtered_clr = self.clr_path.replace(".clr", "_filtered.clr")
+        filtered_tif = self.output_tif.replace("_temp.tif", ".tif")
+        filtered_clr = self.clr_path.replace("_temp.clr", ".clr")
         
         if len(self.class_config) == 0:
             return self.output_tif, self.clr_path
@@ -823,12 +831,24 @@ class FlairInferenceTask(QgsTask):
         
         out_ds = None
         ds = None
+        output_dir = os.path.dirname(self.output_tif)
+        base_name = os.path.basename(self.output_tif)
+        name_without_ext, _ = os.path.splitext(base_name)
         
+        search_pattern = os.path.join(output_dir, name_without_ext + "*.log")
+        log_files = glob.glob(search_pattern)
+        log_files = glob.glob(search_pattern)
+        
+        for log_file in log_files:
+            if os.path.exists(log_file):
+                os.remove(log_file)
+        os.remove(self.output_tif)
+
         return filtered_tif, filtered_clr
 
     def post_traitement_group_creation(self):
-        grouped_tif = self.output_tif.replace(".tif", "_grouped.tif")
-        grouped_clr = self.clr_path.replace(".clr", "_grouped.clr")
+        grouped_tif = self.output_tif.replace("_temp.tif", ".tif")
+        grouped_clr = self.clr_path.replace("_temp.clr", ".clr")
         
         # Creation of the new color file and reading of the group_config
 
@@ -904,7 +924,17 @@ class FlairInferenceTask(QgsTask):
         out_band.FlushCache()
         out_ds = None
         ds = None
+        output_dir = os.path.dirname(self.output_tif)
+        base_name = os.path.basename(self.output_tif)
+        name_without_ext, _ = os.path.splitext(base_name)
         
+        search_pattern = os.path.join(output_dir, name_without_ext + "*.log")
+        log_files = glob.glob(search_pattern)
+        for log_file in log_files:
+            if os.path.exists(log_file):
+                os.remove(log_file)
+        
+        os.remove(self.output_tif)
         return grouped_tif, grouped_clr
 
     def apply_color_palette(self, layer, final_clr):
