@@ -36,6 +36,7 @@ import subprocess
 import processing
 import random
 import json
+import re
 import os
 import yaml
 import numpy as np
@@ -461,14 +462,18 @@ class SemanticSegmentation:
         self.dlg.tableWidget.blockSignals(False)
 
     def on_task_completed(self):
+        self.dlg.text_edit_journal.append("FINISHED")
         QMessageBox.information(self.dlg, "Finished", "Segmentation Terminée")
         self.dlg.accept()
 
     def on_task_terminated(self):
+        self.dlg.text_edit_journal.append("TASK FAILED OR CANCELED")
         QMessageBox.warning(self.dlg, "Error", "Task failed or was canceled")
 
     def generate_vrt(self,layer,band,output_name):
         if layer != None:
+            self.dlg.text_edit_journal.append(f"Creation of VRT for {band} : {output_name}...")
+            QCoreApplication.processEvents()
             vrt_r = os.path.join(self.plugin_dir, output_name)
             
             params_r ={
@@ -483,10 +488,16 @@ class SemanticSegmentation:
     def update_log_ui(self, message):
             if self.dlg.text_edit_journal != None:
                 self.dlg.text_edit_journal.append(message)
+    
+    def update_progress_ui(self, value):
+        if self.dlg.progressBar != None:
+            self.dlg.progressBar.setValue(value)
 
     def run_prediction(self):
         self.dlg.tabWidget.setCurrentIndex(1)
-        
+        self.dlg.text_edit_journal.append("Execution started...")
+        self.update_progress_ui(0)
+
         extracted_vrts = []
 
         layer_r = self.dlg.layer_combo_red.currentLayer()
@@ -506,7 +517,10 @@ class SemanticSegmentation:
         if len(extracted_vrts) > 2:
             temp_vrt = os.path.join(self.plugin_dir, "temp_stack.vrt")
             final_vrt = os.path.join(self.plugin_dir, "final_stack.vrt")
-            
+            self.dlg.text_edit_journal.append("gdal:buildvirtualraster...")
+            self.update_progress_ui(3)
+            QCoreApplication.processEvents()
+
             params_stack = {
                 'INPUT': extracted_vrts,
                 'RESOLUTION': 1,
@@ -516,6 +530,8 @@ class SemanticSegmentation:
             
             processing.run("gdal:buildvirtualraster", params_stack)
             if self.dlg.extent_widget.isValid():
+                self.dlg.text_edit_journal.append("gdal:cliprasterbyextent...")
+                QCoreApplication.processEvents()
                 extent = self.dlg.extent_widget.outputExtent()
                 extent_str = f"{extent.xMinimum()},{extent.xMaximum()},{extent.yMinimum()},{extent.yMaximum()}"
                 params_emprise = {
@@ -528,6 +544,9 @@ class SemanticSegmentation:
             else:
                 input_img_path = temp_vrt
 
+        self.dlg.text_edit_journal.append("Preprocessing finished. Starting FLAIR...")
+        self.update_progress_ui(6)
+        QCoreApplication.processEvents()
 
         output_full_path = self.dlg.lineEdit.text()
         if not output_full_path:
@@ -606,6 +625,7 @@ class SemanticSegmentation:
             class_config = selected_classes if current_mode == "class_selection" else None
         )
         self.task.log_message_signal.connect(self.update_log_ui)
+        self.task.progress_value_signal.connect(self.update_progress_ui)
         self.task.taskCompleted.connect(self.on_task_completed)
         self.task.taskTerminated.connect(self.on_task_terminated)
         
@@ -624,6 +644,7 @@ class SemanticSegmentation:
         self.dlg.tabWidget.setCurrentIndex(0)
         self.dlg.extent_widget.setMapCanvas(self.iface.mapCanvas())
         self.dlg.extent_widget.clear()
+        self.update_progress_ui(0)
 
         check_boxes = self.dlg.ClassSelection.findChildren(QCheckBox)
 
@@ -683,10 +704,11 @@ class FlairInferenceTask(QgsTask):
             flair_root = os.path.dirname(os.path.dirname(os.path.dirname(self.script_path)))
 
             self.process = subprocess.Popen(
-                [self.python_exe, "-m", "src.zone_detect.main", f"--conf={self.yaml_path}"],
+                [self.python_exe,"-u" ,"-m", "src.zone_detect.main", f"--conf={self.yaml_path}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                bufsize=1,
                 cwd=flair_root,
                 env=clean_env
             )
@@ -695,7 +717,14 @@ class FlairInferenceTask(QgsTask):
                 if self.isCanceled():
                     self.process.terminate()
                     return False
-                self.log_message_signal.emit(line.strip())
+                match = re.search(r'(\d+)%', line.strip())
+                if match == None:
+                    self.log_message_signal.emit(line.strip())
+                    QgsMessageLog.logMessage(line.strip(), "FLAIR", Qgis.Info)
+                else:
+                    progress = int(match.group(1))
+                    self.progress_value_signal.emit(int(10 + (progress * 0.7)))
+
 
             self.process.wait()
             
@@ -705,6 +734,7 @@ class FlairInferenceTask(QgsTask):
                 return False
         except Exception as error_msg:
             self.log_message_signal.emit(str(error_msg))
+            QgsMessageLog.logMessage(str(error_msg), "FLAIR", Qgis.Info)
             return False
     
     def finished(self, result):
@@ -717,6 +747,7 @@ class FlairInferenceTask(QgsTask):
                 final_tif, final_clr = self.post_traitement_group_creation()
             elif self.mode == "class_selection":
                 final_tif, final_clr = self.post_traitement_class_selection()
+            self.progress_value_signal.emit(90)
 
             layer_name = os.path.basename(final_tif)
             layer = self.iface.addRasterLayer(final_tif, layer_name)
@@ -724,7 +755,8 @@ class FlairInferenceTask(QgsTask):
             if layer != None:
                 if os.path.exists(final_clr):
                     self.apply_color_palette(layer, final_clr)
-                    
+            
+            self.progress_value_signal.emit(100)
             self.iface.messageBar().pushMessage("Success", "Inference complete", level=Qgis.Success)
             
         if result == False:
