@@ -847,7 +847,7 @@ class FlairInferenceTask(QgsTask):
 
     def post_traitement_group_creation(self):
         grouped_tif = self.output_tif.replace("_temp.tif", ".tif")
-        grouped_clr = self.clr_path.replace("_temp.clr", ".clr")
+        grouped_clr = self.clr_path.replace(".clr", "_temp.clr")
         
         # Creation of the new color file and reading of the group_config
 

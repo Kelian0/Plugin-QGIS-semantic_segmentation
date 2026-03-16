@@ -1,14 +1,2 @@
-13 255 255 255 255 snow
-1 147 142 123 255 pervious_surface
-7 243 166 13 255 brushwood
-0 219 14 154 255 building
-4 21 83 174 255 water
-6 70 228 131 255 deciduous
-5 25 74 38 255 coniferous
-8 102 0 130 255 vineyard
-9 85 255 0 255 herbaceous_vegetation
-11 228 223 124 255 plowed_land
-12 61 230 235 255 swimming_pool
-17 153 153 255 255 greenhouse
-2 248 12 0 255 impervious_surface
-3 169 113 1 255 bare_soil
+5 0 212 29 255 vegetation
+0 251 0 0 255 autre
