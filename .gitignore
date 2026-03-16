@@ -9,8 +9,10 @@ color_grouped.clr
 color_filtered.clr
 group_config_temp.json
 
+
 ### Archive ###
 flair_env/*
+flair_env_/*
 temp_config.yaml
 ### Mostly from https://en.wikipedia.org/wiki/List_of_archive_formats
 

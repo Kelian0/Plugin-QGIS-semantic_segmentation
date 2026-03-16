@@ -29,7 +29,7 @@ from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialo
 from .resources import *
 # Import the code for the dialog
 from .semantic_segmentation_dialog import SemanticSegmentationDialog,InstallDialog
-from .install_env import setup_flair_environment
+from .install_env import get_micromamba, setup_flair_environment
 from .utils import *
 
 import subprocess
@@ -558,12 +558,11 @@ class SemanticSegmentation:
             output_full_path = os.path.join(output_full_path, "Segmentation_temp.tif")
             
         output_path = os.path.dirname(output_full_path)
-        output_name = os.path.basename(output_full_path)
+        output_name = os.path.basename(output_full_path) + "_temp.tif"
         
         _, ext = os.path.splitext(output_name)
         
         if ext == "":
-            output_name = output_name + "_temp.tif"
             output_full_path = os.path.join(output_path, output_name)
         model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
 
@@ -965,10 +964,11 @@ class InstallEnv(QgsTask):
         super().__init__(description, QgsTask.CanCancel)
         self.plugin_dir = plugin_dir
         self.dialog = dialog
-    
+        self.env_dir = os.path.join(self.plugin_dir,"flair_env")
     def run(self):
         try:
-            setup_flair_environment(self.plugin_dir)
+            mamba = get_micromamba(self.plugin_dir)
+            setup_flair_environment(self.plugin_dir, mamba,self.env_dir )
             return True
         except Exception as e:
             QgsMessageLog.logMessage(f"Install failed: {e}", "FLAIR", Qgis.Critical)
