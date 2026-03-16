@@ -40,6 +40,7 @@ import glob
 import re
 import os
 import yaml
+import shutil
 import numpy as np
 from osgeo import gdal
 from qgis.core import QgsProject, QgsTask, QgsApplication, QgsMessageLog, Qgis, QgsPalettedRasterRenderer
@@ -60,6 +61,7 @@ class SemanticSegmentation:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
+        self.temp_dir = os.path.join(self.plugin_dir,"temp")
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
@@ -321,7 +323,7 @@ class SemanticSegmentation:
                     "classes": [item_name]
                 }
                     
-        with open(os.path.join(self.plugin_dir,"group_config_temp.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(self.temp_dir,"group_config_temp.json"), "w", encoding="utf-8") as f:
             json.dump(group_config, f, ensure_ascii=False, indent=4)
 
         return group_config
@@ -484,10 +486,10 @@ class SemanticSegmentation:
         QMessageBox.warning(self.dlg, "Erreur", "Voir le journal pour plus d'informations")
 
     def generate_vrt(self,layer,band,output_name):
-        if layer != None:
+        if layer != None and band >0:
             self.dlg.text_edit_journal.append(f"Creation of VRT for {band} : {output_name}...")
             QCoreApplication.processEvents()
-            vrt_r = os.path.join(self.plugin_dir, output_name)
+            vrt_r = os.path.join(self.temp_dir, output_name)
             
             params_r ={
                 'INPUT': layer.source(),
@@ -522,14 +524,22 @@ class SemanticSegmentation:
         layer_i = self.dlg.layer_combo_nir.currentLayer()
         band_i = self.dlg.band_combo_nir.currentBand()
         
-        extracted_vrts.append(self.generate_vrt(layer_r,band_r,"temp_r.vrt"))
-        extracted_vrts.append(self.generate_vrt(layer_g,band_g,"temp_g.vrt"))
-        extracted_vrts.append(self.generate_vrt(layer_b,band_b,"temp_b.vrt"))
-        extracted_vrts.append(self.generate_vrt(layer_i,band_i,"temp_i.vrt"))
+        vrt_r = self.generate_vrt(layer_r,band_r,"temp_r.vrt")
+        vrt_g = self.generate_vrt(layer_g,band_g,"temp_g.vrt")
+        vrt_b = self.generate_vrt(layer_b,band_b,"temp_b.vrt")
+        vrt_i = self.generate_vrt(layer_i,band_i,"temp_i.vrt")
+        if vrt_r != None :
+            extracted_vrts.append(vrt_r)
+        if vrt_g != None :
+            extracted_vrts.append(vrt_g)
+        if vrt_b != None :
+            extracted_vrts.append(vrt_b)
+        if vrt_i != None :
+            extracted_vrts.append(vrt_i)
 
         if len(extracted_vrts) > 2:
-            temp_vrt = os.path.join(self.plugin_dir, "temp_stack.vrt")
-            final_vrt = os.path.join(self.plugin_dir, "final_stack.vrt")
+            temp_vrt = os.path.join(self.temp_dir, "temp_stack.vrt")
+            final_vrt = os.path.join(self.temp_dir, "final_stack.vrt")
             self.dlg.text_edit_journal.append("gdal:buildvirtualraster...")
             self.update_progress_ui(10)
             QCoreApplication.processEvents()
@@ -567,17 +577,13 @@ class SemanticSegmentation:
             return
             
         if os.path.isdir(output_full_path) == True:
-            output_full_path = os.path.join(output_full_path, "Segmentation_temp.tif")
+            output_full_path = os.path.join(output_full_path, "Segmentation.tif")
             
-        output_path = os.path.dirname(output_full_path)
-        output_name = os.path.basename(output_full_path) + "_temp.tif"
+        output_path = os.path.join(self.temp_dir)
+        output_name = "Segmentation"
         
-        _, ext = os.path.splitext(output_name)
-        
-        if ext == "":
-            output_full_path = os.path.join(output_path, output_name)
+        #TODO Choose the right model if nir is not indicated 
         model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
-
 
         if self.dlg.ClassSelection.isChecked():
             selected_classes = []
@@ -618,14 +624,14 @@ class SemanticSegmentation:
             }]
         }
 
-        temp_yaml_path = os.path.join(self.plugin_dir, "temp_config.yaml")
+        temp_yaml_path = os.path.join(self.temp_dir, "temp_config.yaml")
         with open(temp_yaml_path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
         self.iface.messageBar().pushMessage("Success", f"Config saved: {temp_yaml_path}", level=0)
 
         env_dir = os.path.join(self.plugin_dir, "flair_env")
-        python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3")
+        python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3") # select the right python for windows of mac/linux
         script_path = os.path.join(self.plugin_dir, "vendor",'FLAIR-1', "src", "zone_detect", "main.py")
         
         if not os.path.exists(python_exe) or not os.path.exists(script_path):
@@ -634,11 +640,13 @@ class SemanticSegmentation:
 
         clr_file_path = os.path.join(self.plugin_dir, "color.clr")
         self.task = FlairInferenceTask(
-            description="FLAIR Segmentation...",
+            description="FLAIR Segmentation",
             python_exe=python_exe,
             script_path=script_path,
             yaml_path=temp_yaml_path,
-            output_tif=os.path.join(output_path, output_name),
+            flair_out=os.path.join(output_path,f"{output_name}.tif"),
+            temp_dir = self.temp_dir,
+            output_tif=output_full_path,
             clr_path=clr_file_path,
             iface=self.iface,
             mode = current_mode,
@@ -698,15 +706,18 @@ class FlairInferenceTask(QgsTask):
     log_message_signal = pyqtSignal(str)
     progress_value_signal = pyqtSignal(int)
 
-    def __init__(self, description, python_exe, script_path, yaml_path, output_tif, clr_path,iface,mode,group_config,class_config):
+    def __init__(self, description, python_exe, script_path, yaml_path,flair_out,temp_dir, output_tif, clr_path,iface,mode,group_config,class_config):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
         self.script_path = script_path
         self.yaml_path = yaml_path
+        self.flair_out = flair_out
+        self.temp_dir = temp_dir
         self.output_tif = output_tif
         self.iface = iface
         self.process = None
         self.clr_path = clr_path
+        self.new_color = None
         self.mode = mode 
         self.group_config = group_config
         self.class_config = class_config
@@ -760,20 +771,18 @@ class FlairInferenceTask(QgsTask):
         self.log_message_signal.emit("Starting post processing...")
         
         if result == True:
-            final_tif = self.output_tif
-            final_clr = self.clr_path
             if self.mode == "group_creation":
-                final_tif, final_clr = self.post_traitement_group_creation()
+                self.post_traitement_group_creation()
             elif self.mode == "class_selection":
-                final_tif, final_clr = self.post_traitement_class_selection()
+                self.post_traitement_class_selection()
             self.progress_value_signal.emit(90)
 
-            layer_name = os.path.basename(final_tif)
-            layer = self.iface.addRasterLayer(final_tif, layer_name)
+            layer_name = os.path.basename(self.output_tif)
+            layer = self.iface.addRasterLayer(self.output_tif, layer_name)
             
             if layer != None:
-                if os.path.exists(final_clr):
-                    self.apply_color_palette(layer, final_clr)
+                if os.path.exists(self.new_color):
+                    self.apply_color_palette(layer, self.new_color)
             
             self.progress_value_signal.emit(100)
             self.iface.messageBar().pushMessage("Success", "Inference complete", level=Qgis.Success)
@@ -782,11 +791,12 @@ class FlairInferenceTask(QgsTask):
             self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
 
     def post_traitement_class_selection(self):
-        filtered_tif = self.output_tif.replace("_temp.tif", ".tif")
-        filtered_clr = self.clr_path.replace("_temp.clr", ".clr")
+        self.new_color = os.path.join(self.temp_dir, "class_color.clr")
         
         if len(self.class_config) == 0:
-            return self.output_tif, self.clr_path
+            shutil.copy(self.flair_out, self.output_tif)
+            shutil.copy(self.clr_path, self.new_color)
+            return None
             
         name_to_index = {}
         original_clr_lines = {}
@@ -810,14 +820,14 @@ class FlairInferenceTask(QgsTask):
                 selected_indices.append(original_index)
                 new_clr_lines.append(original_clr_lines[class_name])
                 
-        with open(filtered_clr, 'w') as file:
+        with open(self.new_color, 'w') as file:
             file.writelines(new_clr_lines)
             
-        ds = gdal.Open(self.output_tif)
+        ds = gdal.Open(self.flair_out)
         bands_data = []
         
         for idx in selected_indices:
-            # GDAL bands are 1-indexed, class indices are 0-indexed
+            # GDAL bands are indexed starting form 1 flair index from 0
             band = ds.GetRasterBand(idx + 1)
             bands_data.append(band.ReadAsArray())
             
@@ -831,7 +841,7 @@ class FlairInferenceTask(QgsTask):
             final_data[local_argmax == i] = original_idx
             
         driver = gdal.GetDriverByName("GTiff")
-        out_ds = driver.Create(filtered_tif, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
+        out_ds = driver.Create(self.output_tif, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
         
         out_ds.SetProjection(ds.GetProjection())
         out_ds.SetGeoTransform(ds.GetGeoTransform())
@@ -842,27 +852,12 @@ class FlairInferenceTask(QgsTask):
         
         out_ds = None
         ds = None
-        output_dir = os.path.dirname(self.output_tif)
-        base_name = os.path.basename(self.output_tif)
-        name_without_ext, _ = os.path.splitext(base_name)
-        
-        search_pattern = os.path.join(output_dir, name_without_ext + "*.log")
-        log_files = glob.glob(search_pattern)
-        log_files = glob.glob(search_pattern)
-        
-        for log_file in log_files:
-            if os.path.exists(log_file):
-                os.remove(log_file)
-        os.remove(self.output_tif)
 
-        return filtered_tif, filtered_clr
+        return None
 
     def post_traitement_group_creation(self):
-        grouped_tif = self.output_tif.replace("_temp.tif", ".tif")
-        grouped_clr = self.clr_path.replace(".clr", "_temp.clr")
+        self.new_color = os.path.join(self.temp_dir, "group_color.clr")
         
-        # Creation of the new color file and reading of the group_config
-
         name_to_index = {}
         
         with open(self.clr_path, 'r') as file:
@@ -903,12 +898,12 @@ class FlairInferenceTask(QgsTask):
                 formatted_group = group_name.lower().replace(" ", "_")
                 new_clr_lines.append(f"{min_index} {r} {g} {b} 255 {formatted_group}\n")
                 
-        with open(grouped_clr, 'w') as file:
+        with open(self.new_color, 'w') as file:
             file.writelines(new_clr_lines)
             
         # Modification of the output prediction
 
-        ds = gdal.Open(self.output_tif)
+        ds = gdal.Open(self.flair_out)
         band = ds.GetRasterBand(1)
         data = band.ReadAsArray()
         
@@ -919,7 +914,7 @@ class FlairInferenceTask(QgsTask):
                 reclassified_data[data == old_val] = new_val
                 
         driver = gdal.GetDriverByName("GTiff")
-        out_ds = driver.Create(grouped_tif, ds.RasterXSize, ds.RasterYSize, 1, band.DataType)
+        out_ds = driver.Create(self.output_tif, ds.RasterXSize, ds.RasterYSize, 1, band.DataType)
         
         out_ds.SetProjection(ds.GetProjection())
         out_ds.SetGeoTransform(ds.GetGeoTransform())
@@ -935,19 +930,9 @@ class FlairInferenceTask(QgsTask):
         out_band.FlushCache()
         out_ds = None
         ds = None
-        output_dir = os.path.dirname(self.output_tif)
-        base_name = os.path.basename(self.output_tif)
-        name_without_ext, _ = os.path.splitext(base_name)
-        
-        search_pattern = os.path.join(output_dir, name_without_ext + "*.log")
-        log_files = glob.glob(search_pattern)
-        for log_file in log_files:
-            if os.path.exists(log_file):
-                os.remove(log_file)
-        
-        os.remove(self.output_tif)
-        return grouped_tif, grouped_clr
 
+        return None
+    
     def apply_color_palette(self, layer, final_clr):
         palette_classes = []
         
