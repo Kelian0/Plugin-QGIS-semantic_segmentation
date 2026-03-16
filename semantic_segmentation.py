@@ -205,11 +205,19 @@ class SemanticSegmentation:
             return True
         else:
             return False
-        
+
+    def update_install_progress(self, value):
+        if self.install_dlg.progress_bar != None:
+            self.install_dlg.progress_bar.setValue(value)
+    
+    def update_install_log(self, message): 
+        if self.install_dlg.journal_install != None:
+            self.install_dlg.journal_install.append(message)
+
     def show_installation_dialog(self):
         self.install_dlg = InstallDialog()
         
-        self.install_dlg.progress_bar.setRange(0, 0)
+        self.install_dlg.progress_bar.setRange(0, 100)
         self.install_dlg.progress_bar.setVisible(False)
         self.install_dlg.install_button.clicked.connect(self.start_installation_task)
         
@@ -217,14 +225,18 @@ class SemanticSegmentation:
         
         if result == 1:
             self.iface.messageBar().pushMessage("Success", "Environment ready. You can now use the plugin.", level=0)
+            return True
         else:
             self.iface.messageBar().pushMessage("Error", "Installation failed. Check QGIS messages log.", level=2)
+            return False
 
     def start_installation_task(self):
         self.install_dlg.install_button.setEnabled(False)
         self.install_dlg.progress_bar.setVisible(True)
         
         self.install_task = InstallEnv("Installing Conda Env...", self.plugin_dir, self.install_dlg)
+        self.install_task.log_signal.connect(self.update_install_log)
+        self.install_task.progress_signal.connect(self.update_install_progress)
         QgsApplication.taskManager().addTask(self.install_task)
     
 
@@ -960,15 +972,19 @@ class FlairInferenceTask(QgsTask):
 
 
 class InstallEnv(QgsTask):
+    log_signal = pyqtSignal(str)
+    progress_signal = pyqtSignal(int)
+    
     def __init__(self, description, plugin_dir, dialog):
         super().__init__(description, QgsTask.CanCancel)
         self.plugin_dir = plugin_dir
         self.dialog = dialog
         self.env_dir = os.path.join(self.plugin_dir,"flair_env")
+        
     def run(self):
         try:
             mamba = get_micromamba(self.plugin_dir)
-            setup_flair_environment(self.plugin_dir, mamba,self.env_dir )
+            setup_flair_environment(self.plugin_dir, mamba,self.env_dir,log_callback=self.log_signal.emit,progress_callback=self.progress_signal.emit)
             return True
         except Exception as e:
             QgsMessageLog.logMessage(f"Install failed: {e}", "FLAIR", Qgis.Critical)

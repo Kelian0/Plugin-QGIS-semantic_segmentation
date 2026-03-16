@@ -2,6 +2,27 @@ import os
 import subprocess
 import platform
 
+def run_command_with_log(command, log_callback):
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+    
+    for line in iter(process.stdout.readline, ''):
+        clean_line = line.strip()
+        if clean_line != "":
+            if log_callback != None:
+                log_callback(clean_line)
+                
+    process.wait()
+    
+    if process.returncode == 0:
+        return True
+    return False
+
 def get_micromamba(plugin_dir):
     system = platform.system().lower()
     arch = platform.machine().lower()
@@ -26,11 +47,13 @@ def get_micromamba(plugin_dir):
             
     return exe_path
 
-def setup_flair_environment(plugin_dir,mamba_exe, env_dir):
+def setup_flair_environment(plugin_dir,mamba_exe, env_dir,log_callback=None,progress_callback=None):
 
     req_file = os.path.join(plugin_dir, "vendor", "FLAIR-1", "flair.egg-info", "requires.txt")
     
     dependencies = []
+    if progress_callback != None:
+            progress_callback(10)
     
     if os.path.exists(req_file):
         with open(req_file, 'r') as file:
@@ -44,7 +67,10 @@ def setup_flair_environment(plugin_dir,mamba_exe, env_dir):
             mamba_exe, "create", "-y", "-p", env_dir, 
             "-c", "conda-forge", "python=3.10", "pip", "gdal"
         ]
-        subprocess.run(base_cmd, check=True)
+        run_command_with_log(base_cmd, log_callback)
+
+        if progress_callback != None:
+            progress_callback(50)
         
         pip_exe = os.path.join(env_dir, "bin", "pip")
         
@@ -52,7 +78,9 @@ def setup_flair_environment(plugin_dir,mamba_exe, env_dir):
             pip_exe = os.path.join(env_dir, "Scripts", "pip.exe")
             
         pip_cmd = [pip_exe, "install"] + dependencies
-        subprocess.run(pip_cmd, check=True)
+        run_command_with_log(pip_cmd, log_callback)
+        if progress_callback != None:
+            progress_callback(100)
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
