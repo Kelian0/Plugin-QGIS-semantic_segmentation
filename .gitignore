@@ -8,7 +8,7 @@
 color_grouped.clr
 color_filtered.clr
 group_config_temp.json
-
+temp/*
 
 ### Archive ###
 flair_env/*

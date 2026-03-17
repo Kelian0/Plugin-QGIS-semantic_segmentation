@@ -476,12 +476,20 @@ class SemanticSegmentation:
                 
         self.dlg.tableWidget.blockSignals(False)
 
+    def clear_temp_directory(temp_dir):
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+            
+        os.makedirs(temp_dir)
+
     def on_task_completed(self):
+        self.clear_temp_directory(self.temp_dir)
         self.dlg.text_edit_journal.append("FINISHED")
         QMessageBox.information(self.dlg, "Terminé", "Segmentation Terminée")
         self.dlg.accept()
 
     def on_task_terminated(self):
+        self.clear_temp_directory(self.temp_dir)
         self.dlg.text_edit_journal.append("TASK FAILED OR CANCELED")
         QMessageBox.warning(self.dlg, "Erreur", "Voir le journal pour plus d'informations")
 
