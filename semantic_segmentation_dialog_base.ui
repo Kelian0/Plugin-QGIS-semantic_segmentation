@@ -33,9 +33,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>1145</width>
-            <height>888</height>
+            <y>-526</y>
+            <width>1131</width>
+            <height>1462</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -147,7 +147,7 @@
               <string>Paramètres Avancés</string>
              </property>
              <property name="collapsed">
-              <bool>true</bool>
+              <bool>false</bool>
              </property>
              <property name="saveCheckedState">
               <bool>true</bool>
@@ -357,14 +357,14 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
                  <item row="1" column="6">
-                  <widget class="QPushButton" name="pushButton">
+                  <widget class="QPushButton" name="btn_load">
                    <property name="text">
                     <string>Charger une configuration</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="5">
-                  <widget class="QPushButton" name="pushButton_2">
+                  <widget class="QPushButton" name="btn_save">
                    <property name="text">
                     <string>Sauvegarder la configuration</string>
                    </property>
@@ -658,8 +658,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>98</width>
-            <height>88</height>
+            <width>1145</width>
+            <height>888</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">

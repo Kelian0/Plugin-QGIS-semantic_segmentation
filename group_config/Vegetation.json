@@ -1,0 +1,27 @@
+{
+    "vegetation": {
+        "color": "#00ff1c",
+        "classes": [
+            "Herbaceous vegetation",
+            "Brushwood",
+            "Coniferous",
+            "Deciduous"
+        ]
+    },
+    "autre": {
+        "color": "#ff0000",
+        "classes": [
+            "Snow",
+            "Agricultural land",
+            "Impervious Surface",
+            "Building",
+            "Greenhouse",
+            "Water",
+            "Swimming pool",
+            "Bare Soil",
+            "Vineyard",
+            "Plowed land",
+            "Pervious Surface"
+        ]
+    }
+}

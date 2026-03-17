@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem,QMessageBox
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QTreeWidgetItem, QInputDialog, QTableWidgetItem, QMessageBox, QFileDialog
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -36,7 +36,6 @@ import subprocess
 import processing
 import random
 import json
-import glob
 import re
 import os
 import yaml
@@ -62,6 +61,7 @@ class SemanticSegmentation:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         self.temp_dir = os.path.join(self.plugin_dir,"temp")
+        self.group_config_dir = os.path.join(self.plugin_dir,"group_config")
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
@@ -243,7 +243,7 @@ class SemanticSegmentation:
     
 
 
-    def add_group(self):
+    def add_group(self,group_name=None, color_hex=None):
         text, ok_pressed = QInputDialog.getText(self.dlg, "Nouveau Groupe", "Entrer un nom de groupe")
 
         if ok_pressed:
@@ -272,15 +272,8 @@ class SemanticSegmentation:
                 color_button.setAllowOpacity(False)
                 color_button.setColor(QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
                                 
-                color_button.colorChanged.connect(self.on_color_changed)
-
                 self.dlg.tableWidget.setCellWidget(row_index, 1, color_button)
 
-    def on_color_changed(self):
-        #TODO mise à jour du fichier de config des groupes
-        pass
-
-    
     def make_group_color_dict(self):
         group_config = {}
         row_count = self.dlg.tableWidget.rowCount()
@@ -475,6 +468,84 @@ class SemanticSegmentation:
                 self.dlg.tableWidget.selectRow(row)
                 
         self.dlg.tableWidget.blockSignals(False)
+
+    def save_group_config(self):
+        file_path, _ = QFileDialog.getSaveFileName(
+            self.dlg, 
+            "Sauvegarder une configuration", 
+            self.group_config_dir, 
+            "JSON Files (*.json)"
+        )
+        
+        if file_path:
+            config_data = self.make_group_color_dict()
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+
+    def load_group_config(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.dlg, 
+            "Charger une configuration", 
+            self.group_config_dir, 
+            "JSON Files (*.json)"
+        )
+        
+        if not file_path:
+            return
+            
+        with open(file_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+            
+        base_items = {}
+        all_items = self.dlg.treeWidget.findItems("", Qt.MatchContains | Qt.MatchRecursive, 0)
+        
+        # Extract existing base classes to reuse them
+        for item in all_items:
+            if item.childCount() == 0:
+                if not (item.flags() & Qt.ItemIsEditable):
+                    base_items[item.text(0)] = item.clone()
+                    
+        self.dlg.treeWidget.clear()
+        self.dlg.tableWidget.setRowCount(0)
+        
+        tree_root = self.dlg.treeWidget.invisibleRootItem()
+        
+        for group_name, data in config_data.items():
+            classes = data.get("classes", [])
+            color_hex = data.get("color", "#FFFFFF")
+            
+            is_base_class = False
+            
+            if len(classes) == 1:
+                if classes[0] == group_name:
+                    is_base_class = True
+                    
+            if is_base_class == True:
+                if group_name in base_items:
+                    tree_root.addChild(base_items[group_name])
+            
+            if is_base_class == False:
+                treeitem = QTreeWidgetItem(self.dlg.treeWidget)
+                treeitem.setText(0, group_name)
+                treeitem.setData(0, Qt.UserRole, group_name)
+                treeitem.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled | Qt.ItemIsEditable)
+                treeitem.setExpanded(True)
+                
+                row_index = self.dlg.tableWidget.rowCount()
+                self.dlg.tableWidget.insertRow(row_index)
+                
+                tableitem = QTableWidgetItem(group_name)
+                tableitem.setData(Qt.UserRole, group_name)
+                self.dlg.tableWidget.setItem(row_index, 0, tableitem)
+                
+                color_button = QgsColorButton()
+                color_button.setAllowOpacity(False)
+                color_button.setColor(QColor(color_hex))
+                self.dlg.tableWidget.setCellWidget(row_index, 1, color_button)
+                
+                for class_name in classes:
+                    if class_name in base_items:
+                        treeitem.addChild(base_items[class_name])
 
     def on_task_completed(self):
         clear_temp_directory(self.temp_dir)
@@ -696,6 +767,8 @@ class SemanticSegmentation:
         self.dlg.tableWidget.itemSelectionChanged.connect(self.sync_table_to_tree_selection)
         self.dlg.treeWidget.itemSelectionChanged.connect(self.sync_tree_to_table_selection)
         self.dlg.button_box.accepted.connect(self.run_prediction)
+        self.dlg.btn_load.clicked.connect(self.load_group_config)
+        self.dlg.btn_save.clicked.connect(self.save_group_config)
         
         if not self.dlg.exec_():
             return
