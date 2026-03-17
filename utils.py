@@ -1,3 +1,6 @@
+import os
+import shutil
+
 def toggle_strikethrough(is_checked, checkbox):
     font = checkbox.font()
     
@@ -28,3 +31,9 @@ def toggle_exclusive_groupboxes(is_checked, other_groupbox):
         other_groupbox.setChecked(True)
         
     other_groupbox.blockSignals(False)
+
+def clear_temp_directory(temp_dir):
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+        
+    os.makedirs(temp_dir)
