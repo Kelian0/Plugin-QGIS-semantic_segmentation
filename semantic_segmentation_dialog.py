@@ -50,7 +50,9 @@ class SemanticSegmentationDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layer_combo_blue.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.layer_combo_nir.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.layer_combo_nir.setAllowEmptyLayer(True,"(Vide)")
-
+        self.mask_layer.setFilters(QgsMapLayerProxyModel.VectorLayer)
+        self.mask_layer.setAllowEmptyLayer(True,"(Vide)")
+        
         initial_layer_red = self.layer_combo_red.currentLayer()
         initial_layer_green = self.layer_combo_green.currentLayer()
         initial_layer_blue = self.layer_combo_blue.currentLayer()

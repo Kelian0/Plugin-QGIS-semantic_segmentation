@@ -650,13 +650,21 @@ class SemanticSegmentation:
             return
             
         if os.path.isdir(output_full_path) == True:
-            output_full_path = os.path.join(output_full_path, "Segmentation.tif")
+            output_full_path = os.path.join(output_full_path, "segmentation.tif")
             
         output_path = os.path.join(self.temp_dir)
-        output_name = "Segmentation"
+        output_name = "segmentation"
         
-        #TODO Choose the right model if nir is not indicated 
-        model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
+        if vrt_i != None :
+            model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgbi_15cl_resnet34-unet_weights.pth")
+            channels = [1,2,3,4]
+            norm_means = [105.08, 110.87, 101.82, 106.38]
+            norm_stds = [52.17, 45.38, 44.00, 39.69]
+        else:
+            model_path = os.path.join(self.plugin_dir, "vendor", "FLAIR-INC_rgb_15cl_resnet34-unet_weights.pth")
+            channels = [1,2,3]
+            norm_means = [105.08, 110.87, 101.82]
+            norm_stds = [52.17, 45.38, 44]
 
         if self.dlg.ClassSelection.isChecked():
             selected_classes = []
@@ -676,7 +684,7 @@ class SemanticSegmentation:
             "output_path": output_path,
             "output_name": output_name,
             "input_img_path": input_img_path,
-            "channels": [1, 2, 3, 4],
+            "channels": channels,
             "img_pixels_detection": 512,
             "margin": 128,
             "output_type": output_type_val,
@@ -692,8 +700,8 @@ class SemanticSegmentation:
             "write_dataframe": False,
             "norma_task": [{
                 "norm_type": "custom",
-                "norm_means": [105.08, 110.87, 101.82, 106.38],
-                "norm_stds": [52.17, 45.38, 44.00, 39.69]
+                "norm_means": norm_means,
+                "norm_stds": norm_stds
             }]
         }
 
@@ -724,7 +732,9 @@ class SemanticSegmentation:
             iface=self.iface,
             mode = current_mode,
             group_config = self.make_group_color_dict() if current_mode == "group_creation" else None,
-            class_config = selected_classes if current_mode == "class_selection" else None
+            class_config = selected_classes if current_mode == "class_selection" else None,
+            mask_layer= self.dlg.mask_layer.currentLayer() if self.dlg.mask_layer != None else None,
+            plugin_dir = self.plugin_dir 
         )
         self.task.log_message_signal.connect(self.update_log_ui)
         self.task.progress_value_signal.connect(self.update_progress_ui)
@@ -781,7 +791,7 @@ class FlairInferenceTask(QgsTask):
     log_message_signal = pyqtSignal(str)
     progress_value_signal = pyqtSignal(int)
 
-    def __init__(self, description, python_exe, script_path, yaml_path,flair_out,temp_dir, output_tif, clr_path,iface,mode,group_config,class_config):
+    def __init__(self, description, python_exe, script_path, yaml_path,flair_out,temp_dir, output_tif, clr_path,iface,mode,group_config,class_config,mask_layer,plugin_dir):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
         self.script_path = script_path
@@ -796,6 +806,8 @@ class FlairInferenceTask(QgsTask):
         self.mode = mode 
         self.group_config = group_config
         self.class_config = class_config
+        self.mask_layer = mask_layer
+        self.plugin_dir = plugin_dir
 
     def run(self):
         try:
@@ -867,11 +879,6 @@ class FlairInferenceTask(QgsTask):
 
     def post_traitement_class_selection(self):
         self.new_color = os.path.join(self.temp_dir, "class_color.clr")
-        
-        if len(self.class_config) == 0:
-            shutil.copy(self.flair_out, self.output_tif)
-            shutil.copy(self.clr_path, self.new_color)
-            return None
             
         name_to_index = {}
         original_clr_lines = {}
@@ -914,9 +921,19 @@ class FlairInferenceTask(QgsTask):
         for i in range(len(selected_indices)):
             original_idx = selected_indices[i]
             final_data[local_argmax == i] = original_idx
-            
+
+        
+        #TODO Utiliser gdalwarp -overwrite -of GTiff -cutline pour appliquer la couche de masquage. 
+        
         driver = gdal.GetDriverByName("GTiff")
-        out_ds = driver.Create(self.output_tif, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
+            
+        if self.mask_layer != None:
+            current_out_path = os.path.join(self.temp_dir, "temp_unclipped.tif")
+            
+        if self.mask_layer == None:
+            current_out_path = self.output_tif
+            
+        out_ds = driver.Create(current_out_path, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
         
         out_ds.SetProjection(ds.GetProjection())
         out_ds.SetGeoTransform(ds.GetGeoTransform())
@@ -927,6 +944,20 @@ class FlairInferenceTask(QgsTask):
         
         out_ds = None
         ds = None
+
+        if self.mask_layer != None:
+            params_clip = {
+                'INPUT': current_out_path,
+                'MASK': self.mask_layer,
+                'NODATA': 255,
+                'CROP_TO_CUTLINE': False,
+                'KEEP_RESOLUTION': True,
+                'OUTPUT': self.output_tif
+            }
+            
+            processing.run("gdal:cliprasterbymasklayer", params_clip)
+
+            self.import_histogram()
 
         return None
 
@@ -987,27 +1018,59 @@ class FlairInferenceTask(QgsTask):
         for old_val, new_val in reclass_map.items():
             if old_val != new_val:
                 reclassified_data[data == old_val] = new_val
-                
+        
+        #TODO Utiliser gdalwarp -overwrite -of GTiff -cutline pour appliquer la couche de masquage. 
+
         driver = gdal.GetDriverByName("GTiff")
-        out_ds = driver.Create(self.output_tif, ds.RasterXSize, ds.RasterYSize, 1, band.DataType)
+            
+        if self.mask_layer != None:
+            current_out_path = os.path.join(self.temp_dir, "temp_unclipped.tif")
+            
+        if self.mask_layer == None:
+            current_out_path = self.output_tif
+            
+        out_ds = driver.Create(current_out_path, ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
         
         out_ds.SetProjection(ds.GetProjection())
         out_ds.SetGeoTransform(ds.GetGeoTransform())
         
         out_band = out_ds.GetRasterBand(1)
         out_band.WriteArray(reclassified_data)
-        
-        nodata = band.GetNoDataValue()
-        
-        if nodata != None:
-            out_band.SetNoDataValue(nodata)
-            
         out_band.FlushCache()
+        
         out_ds = None
         ds = None
 
+        if self.mask_layer != None:
+            params_clip = {
+                'INPUT': current_out_path,
+                'MASK': self.mask_layer,
+                'NODATA': 255,
+                'CROP_TO_CUTLINE': False,
+                'KEEP_RESOLUTION': True,
+                'OUTPUT': self.output_tif
+            }
+            
+            processing.run("gdal:cliprasterbymasklayer", params_clip)
+
+            self.import_histogram()
+
         return None
-    
+
+    def import_histogram(self):
+        script_stats = os.path.join(self.plugin_dir, "generate_hist.py")
+        
+        cmd_stats = [
+            self.python_exe,
+            script_stats,
+            self.output_tif,
+            self.new_color,
+            self.temp_dir
+        ]
+        
+        subprocess.run(cmd_stats)
+
+
     def apply_color_palette(self, layer, final_clr):
         palette_classes = []
         
@@ -1027,6 +1090,7 @@ class FlairInferenceTask(QgsTask):
         provider = layer.dataProvider()
         renderer = QgsPalettedRasterRenderer(provider, 1, palette_classes)
         layer.setRenderer(renderer)
+        layer.setOpacity(0.5)
         layer.triggerRepaint()
         self.iface.layerTreeView().refreshLayerSymbology(layer.id())
 
