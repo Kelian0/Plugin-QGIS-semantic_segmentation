@@ -666,7 +666,7 @@
      <item>
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>Fichier de Sortie</string>
+        <string>Dossier de Sortie</string>
        </property>
       </widget>
      </item>

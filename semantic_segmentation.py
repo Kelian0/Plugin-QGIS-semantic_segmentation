@@ -769,9 +769,18 @@ class SemanticSegmentation:
         self.dlg.GroupCreation.toggled.connect(
             lambda checked, other=self.dlg.ClassSelection: toggle_exclusive_groupboxes(checked, other))
 
+        remove_icon = QgsApplication.getThemeIcon("/symbologyRemove.svg")
+        add_icon = QgsApplication.getThemeIcon("/symbologyAdd.svg")
+
         # Connect the buttons to the functions
         self.dlg.btn_add.clicked.connect(self.add_group)
+        self.dlg.btn_add.setIcon(add_icon)
+        self.dlg.btn_add.setText("")
+
         self.dlg.btn_remove.clicked.connect(self.remove_group)
+        self.dlg.btn_remove.setIcon(remove_icon)
+        self.dlg.btn_remove.setText("")
+        
         self.dlg.treeWidget.itemChanged.connect(self.on_tree_item_changed)
         self.dlg.tableWidget.itemChanged.connect(self.on_table_item_changed)
         self.dlg.tableWidget.itemSelectionChanged.connect(self.sync_table_to_tree_selection)
