@@ -1,0 +1,12 @@
+setup.py
+flair.egg-info/PKG-INFO
+flair.egg-info/SOURCES.txt
+flair.egg-info/dependency_links.txt
+flair.egg-info/entry_points.txt
+flair.egg-info/requires.txt
+flair.egg-info/top_level.txt
+src/zone_detect/__init__.py
+src/zone_detect/dataset.py
+src/zone_detect/main.py
+src/zone_detect/model.py
+src/zone_detect/slicing_job.py

@@ -1,0 +1,3 @@
+[console_scripts]
+flair = src.flair.main:main
+flair-detect = src.zone_detect.main:main
