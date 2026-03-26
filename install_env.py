@@ -62,7 +62,7 @@ def get_micromamba(plugin_dir):
 
 def setup_flair_environment(plugin_dir,mamba_exe, env_dir,log_callback=None,progress_callback=None):
 
-    req_file = os.path.join(plugin_dir, "vendor", "FLAIR-1", "flair.egg-info", "requires.txt")
+    req_file = os.path.join(plugin_dir, "vendor", "FLAIR-1", "flair_info", "requires.txt")
     log_path = os.path.join(plugin_dir, "install_log.txt")
 
     clean_env = os.environ.copy()
