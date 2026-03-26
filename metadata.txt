@@ -12,8 +12,8 @@ email=kelian.pons@centrale.centralelille.fr
 
 about=This plugin lets you create segmentation from aerial images.
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/Kelian0/Plugin-QGIS-semantic_segmentation
+repository=https://github.com/Kelian0/Plugin-QGIS-semantic_segmentation
 # End of mandatory metadata
 
 # Recommended items:
@@ -25,7 +25,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python
 
-homepage=http://homepage
+homepage=https://github.com/Kelian0/Plugin-QGIS-semantic_segmentation
 category=Raster
 icon=icon.png
 # experimental flag
