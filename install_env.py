@@ -3,13 +3,19 @@ import subprocess
 import platform
 
 def run_command_with_log(command, log_callback, log_file_path=None, custom_env=None):
+    creation_flags = 0
+    
+    if os.name == "nt":
+        creation_flags = subprocess.CREATE_NO_WINDOW
+    
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        env=custom_env
+        env=custom_env,
+        creationflags=creation_flags
     )
     
     if log_file_path != None:

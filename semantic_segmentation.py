@@ -833,6 +833,12 @@ class FlairInferenceTask(QgsTask):
 
             flair_root = os.path.dirname(os.path.dirname(os.path.dirname(self.script_path)))
 
+            creation_flags = 0
+            
+            if os.name == "nt":
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
+
             self.process = subprocess.Popen(
                 [self.python_exe,"-u" ,"-m", "src.zone_detect.main", f"--conf={self.yaml_path}"],
                 stdout=subprocess.PIPE,
@@ -840,7 +846,8 @@ class FlairInferenceTask(QgsTask):
                 text=True,
                 bufsize=1,
                 cwd=flair_root,
-                env=clean_env
+                env=clean_env,
+                creationflags=creation_flags,
             )
 
             for line in self.process.stdout:
