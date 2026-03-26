@@ -709,8 +709,6 @@ class SemanticSegmentation:
         with open(temp_yaml_path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
-        self.iface.messageBar().pushMessage("Success", f"Config saved: {temp_yaml_path}", level=0)
-
         env_dir = os.path.join(self.plugin_dir, "flair_env")
         python_exe = os.path.join(env_dir, "python.exe") if os.name == 'nt' else os.path.join(env_dir, "bin", "python3") # select the right python for windows of mac/linux
         script_path = os.path.join(self.plugin_dir, "vendor",'FLAIR-1', "src", "zone_detect", "main.py")
@@ -747,8 +745,6 @@ class SemanticSegmentation:
         self.task.taskTerminated.connect(self.on_task_terminated)
         
         QgsApplication.taskManager().addTask(self.task)
-        self.iface.messageBar().pushMessage("Info", "Analysis started in background", level=0)
-
 
 
     def run(self):
@@ -887,7 +883,6 @@ class FlairInferenceTask(QgsTask):
                     self.apply_color_palette(layer, self.new_color)
             
             self.progress_value_signal.emit(100)
-            self.iface.messageBar().pushMessage("Success", "Inference complete", level=Qgis.Success)
             
         if result == False:
             self.iface.messageBar().pushMessage("Error", "Task failed", level=Qgis.Critical)
