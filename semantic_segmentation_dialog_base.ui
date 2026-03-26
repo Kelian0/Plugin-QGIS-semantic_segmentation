@@ -135,7 +135,7 @@
             <widget class="QgsMapLayerComboBox" name="mask_layer"/>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_16">
+            <widget class="QCheckBox" name="check_box_hist">
              <property name="text">
               <string>Produire un histogramme</string>
              </property>
@@ -645,8 +645,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>1145</width>
-            <height>884</height>
+            <width>98</width>
+            <height>88</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">

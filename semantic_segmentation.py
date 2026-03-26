@@ -719,6 +719,10 @@ class SemanticSegmentation:
             self.iface.messageBar().pushMessage("Error", "Python env or FLAIR script missing", level=2)
             return
 
+        if self.dlg.check_box_hist is not None :
+            hist_checked = self.dlg.check_box_hist.isChecked()
+
+
         clr_file_path = os.path.join(self.plugin_dir, "color.clr")
         self.task = FlairInferenceTask(
             description="FLAIR Segmentation",
@@ -734,7 +738,8 @@ class SemanticSegmentation:
             group_config = self.make_group_color_dict() if current_mode == "group_creation" else None,
             class_config = selected_classes if current_mode == "class_selection" else None,
             mask_layer= self.dlg.mask_layer.currentLayer() if self.dlg.mask_layer != None else None,
-            plugin_dir = self.plugin_dir 
+            plugin_dir = self.plugin_dir,
+            hist_checked = hist_checked
         )
         self.task.log_message_signal.connect(self.update_log_ui)
         self.task.progress_value_signal.connect(self.update_progress_ui)
@@ -800,7 +805,7 @@ class FlairInferenceTask(QgsTask):
     log_message_signal = pyqtSignal(str)
     progress_value_signal = pyqtSignal(int)
 
-    def __init__(self, description, python_exe, script_path, yaml_path,flair_out,temp_dir, output_tif, clr_path,iface,mode,group_config,class_config,mask_layer,plugin_dir):
+    def __init__(self, description, python_exe, script_path, yaml_path,flair_out,temp_dir, output_tif, clr_path,iface,mode,group_config,class_config,mask_layer,plugin_dir,hist_checked):
         super().__init__(description, QgsTask.CanCancel)
         self.python_exe = python_exe
         self.script_path = script_path
@@ -817,6 +822,7 @@ class FlairInferenceTask(QgsTask):
         self.class_config = class_config
         self.mask_layer = mask_layer
         self.plugin_dir = plugin_dir
+        self.hist_checked = hist_checked
 
     def run(self):
         try:
@@ -966,7 +972,8 @@ class FlairInferenceTask(QgsTask):
             
             processing.run("gdal:cliprasterbymasklayer", params_clip)
 
-            self.import_histogram()
+            if self.hist_checked:
+                self.import_histogram()
 
         return None
 
@@ -1062,7 +1069,8 @@ class FlairInferenceTask(QgsTask):
             
             processing.run("gdal:cliprasterbymasklayer", params_clip)
 
-            self.import_histogram()
+            if self.hist_checked:
+                self.import_histogram()
 
         return None
 
