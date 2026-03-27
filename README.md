@@ -11,7 +11,7 @@ A QGIS plugin for semantic segmentation using the FLAIR-1 model. It automates de
 
 ## Usage
 
-To set up and use the plugin, simply follow the [User Guide](resources.py).
+To set up and use the plugin, simply follow the [User Guide](User_Guide.pdf).
 
 ## Features and Modifications
 
