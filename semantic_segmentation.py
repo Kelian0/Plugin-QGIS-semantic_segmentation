@@ -61,6 +61,7 @@ class SemanticSegmentation:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         self.temp_dir = os.path.join(self.plugin_dir,"temp")
+        os.makedirs(self.temp_dir, exist_ok=True)
         self.group_config_dir = os.path.join(self.plugin_dir,"group_config")
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
